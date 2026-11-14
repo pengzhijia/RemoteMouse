@@ -3,6 +3,10 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+if ! command -v cargo >/dev/null && command -v rustup >/dev/null; then
+    RUST_TOOLCHAIN="$(rustup toolchain list | sed -n '1s/ .*//p')"
+    export PATH="$HOME/.rustup/toolchains/$RUST_TOOLCHAIN/bin:$PATH"
+fi
 
 ARCH="${1:-arm64}"
 
@@ -27,7 +31,7 @@ case "$ARCH" in
 esac
 
 echo "=========================================="
-echo "🔨 Building TVRemoteMouse for macOS (.app) [$ARCH_DESC]"
+echo "🔨 Building RemoteMouse for macOS (.app) [$ARCH_DESC]"
 echo "=========================================="
 
 cd "$ROOT_DIR"
@@ -54,12 +58,12 @@ else
 fi
 
 # 2. Generate App Icon if missing
-echo "🎨 [2/4] Generating TVRemoteMouse icon..."
+echo "🎨 [2/4] Generating RemoteMouse icon..."
 swift "$ROOT_DIR/scripts/generate_icon.swift"
 
 # 3. Compile Swift Native App
 echo "🍏 [3/4] Compiling Swift Native App for $ARCH..."
-SWIFT_BIN="$BUILD_DIR/TVRemoteMouse"
+SWIFT_BIN="$BUILD_DIR/RemoteMouse"
 
 if [ "$ARCH" = "universal" ]; then
     swiftc -O -target arm64-apple-macos12.0 \
@@ -79,7 +83,7 @@ else
 fi
 
 # 4. Assemble macOS .app Bundle
-APP_BUNDLE="$BUILD_DIR/TVRemoteMouse.app"
+APP_BUNDLE="$BUILD_DIR/RemoteMouse.app"
 echo "📦 [4/4] Assembling $APP_BUNDLE..."
 rm -rf "$APP_BUNDLE"
 
@@ -87,10 +91,26 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 # Copy binaries
-cp "$SWIFT_BIN" "$APP_BUNDLE/Contents/MacOS/TVRemoteMouse"
+cp "$SWIFT_BIN" "$APP_BUNDLE/Contents/MacOS/RemoteMouse"
 cp "$ATV_CLI_BIN" "$APP_BUNDLE/Contents/MacOS/atv-cli"
-chmod +x "$APP_BUNDLE/Contents/MacOS/TVRemoteMouse"
+WEB_REMOTE_SRC="$ROOT_DIR/integrations/web-remote"
+WEB_REMOTE_BUILD_SOURCE="$BUILD_DIR/WatchBridge.embedded.swift"
+cp "$WEB_REMOTE_SRC/WatchBridge.swift" "$WEB_REMOTE_BUILD_SOURCE"
+patch -s "$WEB_REMOTE_BUILD_SOURCE" < "$WEB_REMOTE_SRC/adapter/mac-embedded.patch"
+if [ "$ARCH" = "universal" ]; then
+    swiftc -O -target arm64-apple-macos13.0 -import-objc-header "$WEB_REMOTE_SRC/CGVirtualDisplay.h" "$WEB_REMOTE_BUILD_SOURCE" -o "$BUILD_DIR/WebRemoteBridge_arm64"
+    swiftc -O -target x86_64-apple-macos13.0 -import-objc-header "$WEB_REMOTE_SRC/CGVirtualDisplay.h" "$WEB_REMOTE_BUILD_SOURCE" -o "$BUILD_DIR/WebRemoteBridge_x86_64"
+    lipo -create -output "$APP_BUNDLE/Contents/MacOS/WebRemoteBridge" "$BUILD_DIR/WebRemoteBridge_arm64" "$BUILD_DIR/WebRemoteBridge_x86_64"
+    rm -f "$BUILD_DIR/WebRemoteBridge_arm64" "$BUILD_DIR/WebRemoteBridge_x86_64"
+else
+    swiftc -O -target "${ARCH}-apple-macos13.0" -import-objc-header "$WEB_REMOTE_SRC/CGVirtualDisplay.h" "$WEB_REMOTE_BUILD_SOURCE" -o "$APP_BUNDLE/Contents/MacOS/WebRemoteBridge"
+fi
+rm -f "$WEB_REMOTE_BUILD_SOURCE"
+mkdir -p "$APP_BUNDLE/Contents/Resources/web"
+cp "$WEB_REMOTE_SRC/web/remote.html" "$APP_BUNDLE/Contents/Resources/web/remote.html"
+chmod +x "$APP_BUNDLE/Contents/MacOS/RemoteMouse"
 chmod +x "$APP_BUNDLE/Contents/MacOS/atv-cli"
+chmod +x "$APP_BUNDLE/Contents/MacOS/WebRemoteBridge"
 
 # Copy metadata and resources
 cp "$ROOT_DIR/mac-app/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
@@ -165,7 +185,8 @@ fi
 
 echo "🔏 Signing application with certificate: \"$SIGN_IDENTITY\"..."
 codesign --force --sign "$SIGN_IDENTITY" --identifier "com.corvofeng.TVRemoteMouse.helper" "$APP_BUNDLE/Contents/MacOS/atv-cli"
-codesign --force --sign "$SIGN_IDENTITY" --identifier "com.corvofeng.TVRemoteMouse" "$APP_BUNDLE/Contents/MacOS/TVRemoteMouse"
+codesign --force --sign "$SIGN_IDENTITY" --identifier "com.corvofeng.TVRemoteMouse.web-remote" "$APP_BUNDLE/Contents/MacOS/WebRemoteBridge"
+codesign --force --sign "$SIGN_IDENTITY" --identifier "com.corvofeng.TVRemoteMouse" "$APP_BUNDLE/Contents/MacOS/RemoteMouse"
 codesign --force --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
 if [ "$ADHOC_SIGNING" = true ]; then
     echo "✨ Ad-hoc signing completed. This local test build requires its own Accessibility consent."
@@ -193,7 +214,7 @@ if echo "$SIGN_IDENTITY" | grep -qE "(Corvo Development|AppleTVRemote Developmen
     echo "    ./scripts/import_certificate.sh Corvo_Development.p12"
     echo ""
     echo "  方案 B — 目标 Mac 上跳过 Gatekeeper (一次性):"
-    echo "    xattr -dr com.apple.quarantine /Applications/TVRemoteMouse.app"
+    echo "    xattr -dr com.apple.quarantine /Applications/RemoteMouse.app"
     echo "    或: 右键 App -> 打开 -> 点击「打开」"
     echo ""
     echo "  方案 C — 使用 Apple Developer 账号正式签名 (用于公开分发):"

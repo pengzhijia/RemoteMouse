@@ -6,12 +6,17 @@ struct StatusPopoverView: View {
     @State private var editingPIN = false
     @State private var draftPIN = ""
     @State private var pinError: String?
+    @State private var selectedControl = "remote"
     @FocusState private var pinFocused: Bool
 
-    private var tint: Color { Color(nsColor: manager.connectionState.color) }
+    private var displayedState: RemoteConnectionState {
+        selectedControl == "web" ? (WebRemoteManager.shared.isRunning ? .waiting : .stopped) : manager.connectionState
+    }
+    private var tint: Color { Color(nsColor: displayedState.color) }
     private var mode: String { manager.status?.currentTrackpadMode ?? "mouse" }
     private var badgeTitle: String {
-        switch manager.connectionState {
+        if selectedControl == "web" { return WebRemoteManager.shared.isRunning ? "网页遥控运行中" : "网页遥控已停止" }
+        switch displayedState {
         case .connected: return "已连接"
         case .waiting: return "等待连接"
         case .connecting: return "连接中"
@@ -29,14 +34,30 @@ struct StatusPopoverView: View {
     private var panelContents: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
-            device
+            if selectedControl == "remote" { device }
             HStack(spacing: 3) {
-                modeButton("mouse", title: "鼠标", symbol: "cursorarrow")
-                modeButton("gyro", title: "陀螺仪", symbol: "gyroscope").disabled(true)
+                controlButton("remote", title: "遥控器遥控", symbol: "appletvremote.gen4")
+                controlButton("web", title: "网页遥控", symbol: "globe")
             }
             .padding(3).background(Color.primary.opacity(0.06)).cornerRadius(10)
+            if selectedControl == "remote" { remoteControls } else { webControls }
+            Divider()
+            footer
+        }
+        .padding(18)
+        .frame(width: 330)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(GeometryReader { geometry in
+            Color.clear
+                .onAppear { manager.resizePanel(to:geometry.size) }
+                .onChange(of:geometry.size) { manager.resizePanel(to:$0) }
+        })
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var remoteControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
             if mode == "idle" { Text("当前为轨迹预览，可在控制台调整").font(.caption).foregroundColor(.secondary) }
-            Text("仅系统遥控器 · 陀螺仪尚未收到数据").font(.caption).foregroundColor(.secondary)
             HStack { Text("灵敏度").font(.caption); Picker("灵敏度",selection:Binding(get:{SensitivityPreset.nearest(manager.speed).rawValue},set:{manager.setSensitivity($0)})) { ForEach(SensitivityPreset.allCases,id:\.rawValue){p in Text(p.title).tag(p.rawValue)} }.pickerStyle(.segmented).labelsHidden() }
             pinRow
             if let error = pinError {
@@ -63,25 +84,52 @@ struct StatusPopoverView: View {
                 .foregroundColor(.accentColor).padding(12)
                 .background(Color.accentColor.opacity(0.09)).cornerRadius(10)
             }.buttonStyle(.plain)
-            Divider()
-            footer
         }
-        .padding(18)
-        .frame(width: 330)
-        .fixedSize(horizontal: false, vertical: true)
-        .background(GeometryReader { geometry in
-            Color.clear
-                .onAppear { manager.resizePanel(to:geometry.size) }
-                .onChange(of:geometry.size) { manager.resizePanel(to:$0) }
-        })
-        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var webControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(WebRemoteManager.shared.isRunning ? "网页遥控运行中" : "网页遥控未运行", systemImage: "globe")
+                .font(.system(size: 13, weight: .medium))
+            Text("iPhone / iPad 用 Safari 扫码连接，可使用触控、键盘、语音和屏幕查看。")
+                .font(.caption).foregroundColor(.secondary)
+            HStack {
+                Button("扫码连接") { WebRemoteManager.shared.perform("qr") }
+                Button("复制链接") { WebRemoteManager.shared.perform("copyLink") }
+            }
+            Divider()
+            VStack(alignment: .leading, spacing: 7) {
+                Text("网页遥控授权").font(.system(size: 12, weight: .semibold))
+                HStack {
+                    Button("辅助功能") { WebRemoteManager.shared.perform("grant") }
+                    Button("屏幕录制") { WebRemoteManager.shared.perform("grantScreen") }
+                    Button("HTTPS 证书") { WebRemoteManager.shared.showCertificateHelp() }
+                }
+                Text("首次控制需授权辅助功能；看屏幕需屏幕录制。手机视频模式需安装本机证书。")
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+            }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.04)).cornerRadius(9)
+            Divider()
+            HStack {
+                Button("恢复 Mac 屏幕") { WebRemoteManager.shared.perform("restoreScreen") }
+                Button("自动解锁密码") { WebRemoteManager.shared.perform("unlockPassword") }
+            }
+            HStack {
+                Button("插电合盖唤醒") { WebRemoteManager.shared.perform("lidAwake") }
+                Button("开机启动") { WebRemoteManager.shared.toggleLogin() }
+            }
+            HStack {
+                Button("使用说明") { WebRemoteManager.shared.perform("help") }
+                Button("网页日志") { WebRemoteManager.shared.perform("log") }
+            }
+        }.buttonStyle(.bordered)
     }
 
     private var header: some View {
         HStack(spacing: 7) {
-            Image(nsImage: StatusRemoteGlyph.image(state: manager.connectionState, size: 26))
+            Image(nsImage: StatusRemoteGlyph.image(state: displayedState, size: 26))
                 .frame(width: 26, height: 28)
-            Text("TVRemoteMouse").font(.system(size: 14, weight: .semibold))
+            Text("RemoteMouse").font(.system(size: 14, weight: .semibold))
             Spacer(minLength: 2)
             HStack(spacing: 4) {
                 Circle().fill(tint).frame(width: 6, height: 6)
@@ -94,24 +142,24 @@ struct StatusPopoverView: View {
         HStack(spacing: 10) {
             Image(systemName: "iphone").font(.system(size: 23, weight: .light)).foregroundColor(.secondary)
             VStack(alignment: .leading, spacing: 4) {
-                Text(manager.status?.client_name ?? (manager.isServiceRunning ? "等待 iPhone 连接" : "服务已暂停"))
+                Text(manager.status?.client_name ?? (manager.isServiceRunning ? "等待 iPhone 连接" : (WebRemoteManager.shared.isRunning ? "网页遥控可用" : "服务已暂停")))
                     .font(.system(size: 14, weight: .medium)).lineLimit(1)
-                Text(manager.status?.session_ready == true ? "可以控制这台 Mac" : (manager.isServiceRunning ? "打开 iPhone 系统遥控器" : "点按下方按钮启动服务"))
+                Text(manager.status?.session_ready == true ? "可以控制这台 Mac" : (manager.isServiceRunning ? "打开 iPhone 系统遥控器" : (WebRemoteManager.shared.isRunning ? "Apple TV 接收端已暂停" : "点按下方按钮启动服务")))
                     .font(.system(size: 11)).foregroundColor(.secondary)
             }
         }.padding(.vertical, 5)
     }
 
-    private func modeButton(_ value: String, title: String, symbol: String) -> some View {
-        Button { manager.setPointerSource(value) } label: {
+    private func controlButton(_ value: String, title: String, symbol: String) -> some View {
+        Button { selectedControl = value } label: {
             HStack(spacing: 7) {
                 Image(systemName: symbol).font(.system(size: 12))
                 Text(title).font(.system(size: 12, weight: .medium))
             }
             .frame(maxWidth: .infinity).frame(height: 31)
-            .background(manager.pointerSource == value ? Color(nsColor: .controlBackgroundColor) : .clear)
+            .background(selectedControl == value ? Color(nsColor: .controlBackgroundColor) : .clear)
             .cornerRadius(8)
-        }.buttonStyle(.plain).disabled(!manager.isServiceRunning || manager.isBusy)
+        }.buttonStyle(.plain)
     }
 
     private var pinRow: some View {
@@ -155,16 +203,19 @@ struct StatusPopoverView: View {
     private var footer: some View {
         HStack {
             Button {
-                if manager.isServiceRunning { manager.stopService() } else { manager.startService() }
+                if selectedControl == "web" {
+                    if WebRemoteManager.shared.isRunning { WebRemoteManager.shared.stop() } else { WebRemoteManager.shared.start() }
+                    manager.refresh()
+                } else if manager.isServiceRunning { manager.stopService() } else { manager.startService() }
             } label: {
-                Label(manager.isBusy ? "处理中…" : (manager.isServiceRunning ? "暂停服务" : "启动服务"), systemImage: manager.isServiceRunning ? "pause" : "play")
+                Label(selectedControl == "web" ? (WebRemoteManager.shared.isRunning ? "暂停网页遥控" : "启动网页遥控") : (manager.isBusy ? "处理中…" : (manager.isServiceRunning ? "暂停遥控器" : "启动遥控器")), systemImage: (selectedControl == "web" ? WebRemoteManager.shared.isRunning : manager.isServiceRunning) ? "pause" : "play")
             }
-            .buttonStyle(.plain).disabled(manager.isBusy)
+            .buttonStyle(.plain).disabled(selectedControl == "remote" && manager.isBusy)
             Spacer()
             Menu {
                 Button("系统日志") { manager.openLogs() }
                 Button("打开日志文件") { manager.openLogFile() }
-                Button("重启服务") { manager.restartService() }.disabled(manager.isBusy || !manager.isServiceRunning)
+                if selectedControl == "remote" { Button("重启遥控器服务") { manager.restartService() }.disabled(manager.isBusy || !manager.isServiceRunning) }
                 Button("刷新状态") { manager.refresh() }
                 Toggle("状态栏显示文字", isOn: Binding(get: { manager.showStatusTextInBar }, set: manager.setStatusText))
                 Divider()

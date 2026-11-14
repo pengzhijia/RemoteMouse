@@ -1,8 +1,8 @@
-# Fake Apple TV (atv-core) 📺
+# RemoteMouse
 
 > **English Version** | [中文版本](README_zh.md)
 
-**Turn the Apple TV Remote that's already built into your iPhone into a controller for Android TV and Mac.** Pull down Control Center, pick your device, and start navigating — no jailbreak, no third-party app, no extra hardware.
+**Control your Mac or Windows PC from an iPhone or iPad over your local network.** RemoteMouse combines the built-in Apple TV Remote in Control Center with a browser-based remote for touchpad, keyboard, voice input, and screen viewing. The Android TV receiver remains available.
 
 <!-- TODO: replace the image below with a 15–30s screen recording:
      Control Center → Apple TV Remote → select device → navigate the TV / Mac.
@@ -21,18 +21,9 @@ Swipe down from the top-right corner to open Control Center, tap "Apple TV Remot
 
 ---
 
-## Download
+## Source code
 
-Prebuilt binaries are attached to the [latest release](https://github.com/corvofeng/atv-core/releases/latest):
-
-| Platform | Download |
-| :--- | :--- |
-| macOS (Apple Silicon) | [`AppleTVRemote-arm64.dmg`](https://github.com/corvofeng/atv-core/releases/latest/download/AppleTVRemote-arm64.dmg) |
-| macOS (Intel) | [`AppleTVRemote-x86_64.dmg`](https://github.com/corvofeng/atv-core/releases/latest/download/AppleTVRemote-x86_64.dmg) |
-| Windows (x86_64) | [`AppleTVRemote-windows-x86_64.zip`](https://github.com/corvofeng/atv-core/releases/latest/download/AppleTVRemote-windows-x86_64.zip) / [`.exe`](https://github.com/corvofeng/atv-core/releases/latest/download/AppleTVRemote-windows-x86_64.exe) |
-| Android TV / Google TV | [`FakeAtv-release.apk`](https://github.com/corvofeng/atv-core/releases/latest/download/FakeAtv-release.apk) |
-
-Prefer to build it yourself? See [Build from source](#build-from-source).
+[Download the source ZIP](https://github.com/pengzhijia/RemoteMouse/archive/refs/heads/main.zip) or clone this repository. Build instructions are in [Build from source](#build-from-source). This repository does not include prebuilt apps.
 
 ---
 
@@ -61,7 +52,7 @@ Prefer to build it yourself? See [Build from source](#build-from-source).
 
 ## Quick start
 
-1. **Install** the DMG (Mac) or APK (Android TV) from [Download](#download).
+1. **Build and install** the desktop app or Android TV receiver using [Build from source](#build-from-source).
 2. **Put your iPhone and the target on the same Wi-Fi** (AP isolation off).
 3. **Grant permissions** — Accessibility on macOS; network ADB + the on-screen "Always allow" prompt on Android TV. Details below.
 4. **Open Control Center to find the Remote**:
@@ -78,16 +69,20 @@ After installing, macOS Gatekeeper will flag the self-signed app. Clear it once:
 ./scripts/import_certificate.sh Corvo_Development.p12
 
 # Option B: strip the quarantine attribute
-xattr -dr com.apple.quarantine /Applications/TVRemoteMouse.app
+xattr -dr com.apple.quarantine /Applications/RemoteMouse.app
 ```
 
-Then grant **System Settings → Privacy & Security → Accessibility → TVRemoteMouse** (or your terminal if running the CLI). Launch the app and use the menu bar icon.
+Then grant **System Settings → Privacy & Security → Accessibility → RemoteMouse** (or your terminal if running the CLI). Launch the app and use the menu bar icon.
 
 ### Windows
 
-Download and extract `AppleTVRemote-windows-x86_64.zip` (or run `AppleTVRemote-windows-x86_64.exe` directly). It runs silently in the background with a system tray icon (no terminal window needed). The web console (`http://127.0.0.1:8765`) opens automatically on first launch for switching trackpad mode and adjusting sensitivity. On first launch, **allow private-network access** in the Windows Firewall prompt so your iPhone can discover the device.
+Build and extract `RemoteMouse-windows-x64.zip`, then run `RemoteMouse.exe`. It runs in the background with a system tray icon. The tray panel offers Apple TV Remote and browser remote modes. On first launch, **allow private-network access** in the Windows Firewall prompt so your iPhone can discover the device.
 
 > Supported: System tray icon with right-click menu (start/stop service, switch trackpad mode, launch at startup, view logs, quit), D-pad / select / back (Esc), mouse cursor & click, play/pause (double-click = next, triple-click = previous), volume / mute, power button turns the monitor off/on.
+
+### Browser remote and screen viewing
+
+The macOS and Windows desktop apps include the source in `integrations/web-remote`. Select the browser remote mode from the menu bar or tray panel to show a QR code and connection link. The browser remote supports a touchpad, keyboard, voice input, shortcuts, and screen viewing. On macOS, iPad touch and Apple Pencil controls are also available. See the [browser remote guide](integrations/web-remote/docs/使用说明.md) for permissions and local HTTPS setup. The browser service uses ports 8765 and 8766 by default.
 
 ### Android TV
 
@@ -126,7 +121,7 @@ Download and extract `AppleTVRemote-windows-x86_64.zip` (or run `AppleTVRemote-w
 ```bash
 # macOS — build the standalone DMG
 ./scripts/build_dmg.sh
-# → build/TVRemoteMouse-arm64.dmg ; drag to /Applications
+# → build/RemoteMouse-arm64.dmg ; drag to /Applications
 
 # Android TV — build and install the APK
 ./scripts/build_android.sh

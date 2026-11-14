@@ -1,6 +1,8 @@
-# TVRemoteMouse for Windows
+# RemoteMouse for Windows
 
-Windows 10/11 x64 原生 WPF 控制台和托盘面板，附带 .NET 桌面运行时，无需单独安装 .NET。解压整个目录后启动 `TVRemoteMouse.exe`，保留所有随附文件。
+网页遥控服务已随安装目录中的 `TVRemoteMouse.WebRemote.exe` 集成。启动主程序后在托盘面板点「网页遥控与屏幕查看 · 打开扫码入口」；手机用 Safari 扫码。网页遥控使用 8765/8766 端口，与系统 Apple TV 遥控器接收端并行运行。需要在 Windows 防火墙允许此组件访问专用网络。看屏幕的视频模式证书设置见 [网页遥控 Windows 说明](../integrations/web-remote/windows/README.md)。
+
+Windows 10/11 x64 原生 WPF 控制台和托盘面板，附带 .NET 桌面运行时，无需单独安装 .NET。解压整个目录后启动 `RemoteMouse.exe`，保留所有随附文件。托盘面板可在「遥控器遥控 / 网页遥控」之间切换，网页遥控的扫码、链接和授权集中在后者。
 
 在同一局域网中，打开 iPhone 控制中心的 Apple TV 遥控器，选择本机计算机名称。默认 PIN 为 1111，可在托盘面板修改。保存新 PIN 后服务重启，当前连接暂时断开；已配对设备可能不会再次要求输入 PIN。PIN、外观和按键映射保存在 `%LOCALAPPDATA%\TVRemoteMouse`，不会覆盖 macOS 设置。
 

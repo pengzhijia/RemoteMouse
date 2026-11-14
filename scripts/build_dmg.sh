@@ -19,16 +19,16 @@ if [ "$ARCH" = "all" ]; then
 fi
 
 echo "=========================================="
-echo "💿 Building TVRemoteMouse DMG Installer [$ARCH]"
+echo "💿 Building RemoteMouse DMG Installer [$ARCH]"
 echo "=========================================="
 
 # 1. Build .app bundle first for specified architecture
 "$SCRIPT_DIR/build_app.sh" "$ARCH"
 
 BUILD_DIR="${TVREMOTE_BUILD_DIR:-$ROOT_DIR/build}"
-APP_BUNDLE="$BUILD_DIR/TVRemoteMouse.app"
+APP_BUNDLE="$BUILD_DIR/RemoteMouse.app"
 STAGING_DIR="$BUILD_DIR/dmg_staging_$ARCH"
-DMG_PATH="$BUILD_DIR/TVRemoteMouse-$ARCH.dmg"
+DMG_PATH="$BUILD_DIR/RemoteMouse-$ARCH.dmg"
 
 if [ ! -d "$APP_BUNDLE" ]; then
     echo "❌ Error: $APP_BUNDLE does not exist."
@@ -54,7 +54,7 @@ rm -f "$DMG_PATH"
 # ------------------------------------------------------------------
 echo "💿 Creating compressed DMG ($DMG_PATH)..."
 hdiutil create \
-    -volname "TVRemoteMouse" \
+    -volname "RemoteMouse" \
     -srcfolder "$STAGING_DIR" \
     -ov \
     -format UDZO \
@@ -64,9 +64,9 @@ hdiutil create \
 # Clean staging directory
 rm -rf "$STAGING_DIR"
 
-# If building arm64, also copy to the standard TVRemoteMouse.dmg name.
+# If building arm64, also copy to the standard RemoteMouse.dmg name.
 if [ "$ARCH" = "arm64" ]; then
-    cp -f "$DMG_PATH" "$BUILD_DIR/TVRemoteMouse.dmg"
+    cp -f "$DMG_PATH" "$BUILD_DIR/RemoteMouse.dmg"
 fi
 
 echo "=========================================="
@@ -75,7 +75,7 @@ echo "📦 Output file: $DMG_PATH"
 echo "📏 File size: $(ls -lh "$DMG_PATH" | awk '{print $5}')"
 echo ""
 echo "DMG 内容:"
-echo "  ✅ TVRemoteMouse.app   — 主程序 ($ARCH)"
+echo "  ✅ RemoteMouse.app   — 主程序 ($ARCH)"
 echo "  ✅ Applications        — 快捷安装入口"
 echo "=========================================="
 

@@ -1,8 +1,8 @@
-# Fake Apple TV (atv-core) 📺
+# RemoteMouse
 
 > [English Version](README.md) | **中文版本**
 
-**把 iPhone 里自带的「Apple TV 遥控器」，变成 Android 电视和 Mac 的遥控器。** 下拉控制中心、选中设备，即可直接操控——无需越狱、无需在手机上装 App、无需额外硬件。
+**通过局域网用 iPhone 或 iPad 遥控 Mac 和 Windows 电脑。** RemoteMouse 集成控制中心自带的「Apple TV 遥控器」和网页遥控，支持触控板、键盘、语音输入与屏幕查看；同时保留 Android TV 接收端。
 
 <!-- TODO: 把下面的图替换成 15–30 秒实机录屏：
      控制中心 → Apple TV 遥控器 → 选择设备 → 操控电视 / Mac。
@@ -21,18 +21,9 @@
 
 ---
 
-## 下载
+## 源码下载
 
-预编译包已附在[最新 Release](https://github.com/corvofeng/atv-core/releases/latest)：
-
-| 平台 | 下载 |
-| :--- | :--- |
-| macOS（Apple Silicon） | [`AppleTVRemote-arm64.dmg`](https://github.com/corvofeng/atv-core/releases/latest/download/AppleTVRemote-arm64.dmg) |
-| macOS（Intel） | [`AppleTVRemote-x86_64.dmg`](https://github.com/corvofeng/atv-core/releases/latest/download/AppleTVRemote-x86_64.dmg) |
-| Windows（x86_64） | [`AppleTVRemote-windows-x86_64.zip`](https://github.com/corvofeng/atv-core/releases/latest/download/AppleTVRemote-windows-x86_64.zip) / [`.exe`](https://github.com/corvofeng/atv-core/releases/latest/download/AppleTVRemote-windows-x86_64.exe) |
-| Android TV / Google TV | [`FakeAtv-release.apk`](https://github.com/corvofeng/atv-core/releases/latest/download/FakeAtv-release.apk) |
-
-想自己编译？见[从源码构建](#从源码构建)。
+[下载源码 ZIP](https://github.com/pengzhijia/RemoteMouse/archive/refs/heads/main.zip)，或克隆本仓库。构建步骤见[从源码构建](#从源码构建)。仓库不包含已构建的安装包。
 
 ---
 
@@ -61,7 +52,7 @@
 
 ## 快速上手
 
-1. 从[下载](#下载)获取 DMG（Mac）或 APK（Android TV）并安装。
+1. 按[从源码构建](#从源码构建)编译并安装桌面版或 Android TV 接收端。
 2. **让 iPhone 与被控端接入同一 Wi-Fi**（关闭 AP 隔离）。
 3. **授予权限**——macOS 授予辅助功能；Android TV 开启网络 ADB 并在弹窗中点「始终允许」。详见下文。
 4. **打开控制中心找到遥控器**：
@@ -78,7 +69,7 @@
 ./scripts/import_certificate.sh Corvo_Development.p12
 
 # 方式 B：移除隔离属性
-xattr -dr com.apple.quarantine /Applications/TVRemoteMouse.app
+xattr -dr com.apple.quarantine /Applications/RemoteMouse.app
 ```
 
 然后授予 **系统设置 → 隐私与安全性 → 辅助功能 → TVRemoteMouse**（用命令行调试则勾选终端）。启动应用后即可通过菜单栏图标使用。
@@ -126,7 +117,7 @@ xattr -dr com.apple.quarantine /Applications/TVRemoteMouse.app
 ```bash
 # macOS —— 打包独立 DMG
 ./scripts/build_dmg.sh
-# → build/TVRemoteMouse-arm64.dmg，拖入 /Applications
+# → build/RemoteMouse-arm64.dmg，拖入 /Applications
 
 # Android TV —— 编译并安装 APK
 ./scripts/build_android.sh
@@ -241,7 +232,7 @@ adb shell settings put secure accessibility_enabled 1
 
 **macOS 提示应用损坏 / 来自不受信任的开发者？**
 ```bash
-xattr -dr com.apple.quarantine /Applications/TVRemoteMouse.app
+xattr -dr com.apple.quarantine /Applications/RemoteMouse.app
 # 或信任内置证书：
 ./scripts/import_certificate.sh Corvo_Development.p12
 ```
@@ -254,4 +245,10 @@ MIT。仅供技术学习与局域网设备互通研究使用。
 
 ## TVRemoteMouse Windows 原生版
 
-Windows 10/11 x64 原生托盘面板和 WPF 遥控控制台已与自定义 macOS 版同步；使用方法、构建方式和实测限制见 [Windows 说明](windows-app/README.md)。测试包为 build/TVRemoteMouse-windows-x64.zip，解压全部文件后运行 TVRemoteMouse.exe。
+Windows 10/11 x64 原生托盘面板和 WPF 遥控控制台已与自定义 macOS 版同步；使用方法、构建方式和实测限制见 [Windows 说明](windows-app/README.md)。构建包为 build/RemoteMouse-windows-x64.zip，解压全部文件后运行 RemoteMouse.exe。
+
+## 网页遥控与屏幕查看
+
+桌面版现已集成 `integrations/web-remote` 的网页遥控功能。启动 RemoteMouse 后，状态栏或托盘面板提供「遥控器遥控 / 网页遥控」切换；选择网页遥控即可扫码、复制链接、查看授权和调整相关设置。网页支持触控板、键盘、中文输入、语音指令、快捷键、屏幕查看，以及原项目提供的 iPad 触屏和 Pencil 操作。Mac 的网页服务由同一 App 启停，Windows 版作为打包在同一目录内的后台组件运行，网页服务默认使用 HTTP 8765 和 HTTPS 8766 端口。控制中心 Apple TV 遥控器继续由原有 `atv-cli` 提供。
+
+Mac 首次使用网页控制需给 `WebRemoteBridge` 单独授予辅助功能权限；看屏幕还需屏幕录制权限。视频模式的本地证书设置见 [网页遥控使用说明](integrations/web-remote/docs/使用说明.md)。macOS 网页服务要求 macOS 13 或更新版本。watchOS 体感鼠标实验项目和快捷指令生成脚本保留在 `integrations/web-remote/watch` 与 `integrations/web-remote/shortcuts`，不随桌面构建包自动安装。

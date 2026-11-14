@@ -28,8 +28,7 @@ enum RemoteConnectionState {
     }
 }
 
-/// Outline remote and pointer matching the supplied menu-bar reference.
-/// The stroke retains the existing connection-state colors.
+/// Mac display and mouse mark, tinted with the current connection state.
 enum StatusRemoteGlyph {
     static func image(state: RemoteConnectionState, size: CGFloat = 22) -> NSImage {
         let image = NSImage(size: NSSize(width: size, height: size))
@@ -38,24 +37,18 @@ enum StatusRemoteGlyph {
         let scale = size / 22
         NSGraphicsContext.current?.cgContext.scaleBy(x: scale, y: scale)
         state.color.setStroke()
-        let remote = NSBezierPath(roundedRect: NSRect(x: 4.5, y: 6.5, width: 8.5, height: 14), xRadius: 1.1, yRadius: 1.1)
-        remote.lineWidth = 1.05
-        remote.stroke()
-        let pointer = NSBezierPath()
-        pointer.move(to: NSPoint(x: 9.1, y: 12.4))
-        pointer.line(to: NSPoint(x: 9.1, y: 2.1))
-        pointer.line(to: NSPoint(x: 12.1, y: 5.1))
-        pointer.line(to: NSPoint(x: 14.4, y: 0.9))
-        pointer.line(to: NSPoint(x: 16.1, y: 1.8))
-        pointer.line(to: NSPoint(x: 13.9, y: 5.9))
-        pointer.line(to: NSPoint(x: 18.1, y: 5.9))
-        pointer.close()
-        NSColor.windowBackgroundColor.setFill()
-        pointer.fill()
-        state.color.setStroke()
-        pointer.lineWidth = 1.05
-        pointer.lineJoinStyle = .round
-        pointer.stroke()
+        let monitor = NSBezierPath(roundedRect: NSRect(x: 2, y: 5, width: 17, height: 13), xRadius: 1.5, yRadius: 1.5)
+        monitor.lineWidth = 1.2; monitor.stroke()
+        let stand = NSBezierPath()
+        stand.move(to: NSPoint(x: 10.5, y: 5)); stand.line(to: NSPoint(x: 10.5, y: 2.5))
+        stand.move(to: NSPoint(x: 7, y: 2.5)); stand.line(to: NSPoint(x: 14, y: 2.5))
+        stand.lineWidth = 1.2; stand.stroke()
+        let mouse = NSBezierPath(roundedRect: NSRect(x: 14, y: 1, width: 6, height: 9), xRadius: 3, yRadius: 3)
+        NSColor.windowBackgroundColor.setFill(); mouse.fill()
+        state.color.setStroke(); mouse.lineWidth = 1.1; mouse.stroke()
+        let wheel = NSBezierPath()
+        wheel.move(to: NSPoint(x: 17, y: 7.5)); wheel.line(to: NSPoint(x: 17, y: 5.5))
+        wheel.lineWidth = 0.9; wheel.stroke()
         NSGraphicsContext.restoreGraphicsState()
         image.unlockFocus()
         image.isTemplate = false
@@ -91,7 +84,7 @@ final class StatusItemManager: NSObject, ObservableObject {
 
     var connectionState: RemoteConnectionState {
         if isBusy { return .busy }
-        if !isServiceRunning { return .stopped }
+        if !isServiceRunning { return WebRemoteManager.shared.isRunning ? .waiting : .stopped }
         if status?.session_ready == true { return .connected }
         if status?.client_connected == true { return .connecting }
         return .waiting
@@ -146,7 +139,7 @@ final class StatusItemManager: NSObject, ObservableObject {
         button.image = StatusRemoteGlyph.image(state: state)
         button.imagePosition = showStatusTextInBar ? .imageLeading : .imageOnly
         button.title = showStatusTextInBar ? "  \(state.title)" : ""
-        button.toolTip = "TVRemoteMouse · \(state.title)"
+        button.toolTip = "RemoteMouse · \(state.title)"
     }
 
     func refresh() {
@@ -204,7 +197,7 @@ final class StatusItemManager: NSObject, ObservableObject {
             backing: .buffered,
             defer: false
         )
-        window.title = "TVRemoteMouse 状态栏预览"
+        window.title = "RemoteMouse 状态栏预览"
         window.contentViewController = NSHostingController(rootView: StatusPopoverView(manager: self))
         window.isReleasedWhenClosed = false
         window.center()

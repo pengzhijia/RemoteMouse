@@ -5,7 +5,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>zh_CN</string>
     <key>CFBundleExecutable</key>
-    <string>TVRemoteMouse</string>
+    <string>RemoteMouse</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
@@ -13,9 +13,9 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>TVRemoteMouse</string>
+    <string>RemoteMouse</string>
     <key>CFBundleDisplayName</key>
-    <string>TVRemoteMouse</string>
+    <string>RemoteMouse</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -23,7 +23,7 @@
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
-    <string>12.0</string>
+    <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSHighResolutionCapable</key>
@@ -31,6 +31,10 @@
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 corvofeng. All rights reserved.</string>
     <key>NSAccessibilityUsageDescription</key>
-    <string>TVRemoteMouse 需要辅助功能权限以模拟鼠标指针移动与按键操作。</string>
+    <string>RemoteMouse 需要辅助功能权限以模拟鼠标指针移动与按键操作。</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>允许 iPhone 和 iPad 在局域网内连接网页遥控器。</string>
+    <key>NSBonjourServices</key>
+    <array><string>_watchbridge._tcp</string><string>_companion-link._tcp</string><string>_mediaremotetv._tcp</string></array>
 </dict>
 </plist>

@@ -28,6 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Start native Swift Debug Web Server on port 18766
         DebugWebServer.shared.start(port: 18766)
+        WebRemoteManager.shared.start()
+        WebRemoteManager.shared.setupLoginIfNeeded()
 
         // Start the atv-core Rust backend process if not already running
         ProcessManager.shared.startCoreIfNeeded { success in
@@ -43,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         if isUIPreview || isStatusPreview { return }
         DebugWebServer.shared.stop()
+        WebRemoteManager.shared.stop()
         ProcessManager.shared.stopCore()
         MouseEventServer.shared.stop()
     }

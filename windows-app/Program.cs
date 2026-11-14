@@ -23,9 +23,17 @@ public sealed class App : System.Windows.Application
 {
     static Mutex? singleton;
     [STAThread]
-    public static void Main()
+    public static void Main(string[] args)
     {
-        singleton = new Mutex(true, "Local\\TVRemoteMouse.Desktop", out bool created);
+        bool restarting = args.Contains("--restart");
+        bool created = false;
+        for (int i = 0; i < (restarting ? 50 : 1); i++)
+        {
+            singleton = new Mutex(true, "Local\\TVRemoteMouse.Desktop", out created);
+            if (created) break;
+            singleton.Dispose();
+            if (restarting) Thread.Sleep(200);
+        }
         if (!created) return;
         var app = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Run();
@@ -34,6 +42,8 @@ public sealed class App : System.Windows.Application
     readonly HttpClient http = new() { BaseAddress = new Uri("http://127.0.0.1:18765"), Timeout = TimeSpan.FromSeconds(3) };
     Forms.NotifyIcon tray = new();
     Process? core;
+    Process? webRemote;
+    bool webSelected;
     Window? panel, console;
     StackPanel? panelBody;
     JsonElement status;
@@ -73,11 +83,73 @@ public sealed class App : System.Windows.Application
         try { var saved = JsonDocument.Parse(File.ReadAllText(SettingPath)).RootElement; pin = saved.GetProperty("pin").GetString() ?? "1111"; appearance = saved.GetProperty("appearance").GetString() ?? "auto"; surface = saved.GetProperty("surface").GetString() ?? "auto"; } catch { }
         if (!ValidPin(pin)) pin = "1111";
         if (File.Exists(MappingPath)) foreach (var line in File.ReadAllLines(MappingPath)) { var pair = line.Split('=', 2); if (pair.Length == 2) mappings[pair[0]] = pair[1]; }
-        tray.Visible = true; tray.Text = "TVRemoteMouse";
+        tray.Visible = true; tray.Text = "RemoteMouse";
         tray.MouseClick += (_, _) => Dispatcher.Invoke(ShowPanel);
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) }; timer.Tick += async (_, _) => await Refresh(); timer.Start();
         _ = Start();
+        StartWebRemote();
+        SetupWebRemoteFirstLaunch();
     }
+    void SetupWebRemoteFirstLaunch()
+    {
+        var directory = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WatchBridge");
+        var marker = System.IO.Path.Combine(directory, "launched");
+        if (File.Exists(marker)) return;
+        try
+        {
+            Directory.CreateDirectory(directory);
+            using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
+            key.SetValue("RemoteMouse", "\"" + Environment.ProcessPath + "\"");
+            File.WriteAllText(marker, "1");
+            Dispatcher.BeginInvoke(new Action(ShowWebRemoteQR));
+        }
+        catch (Exception ex) { MessageBox.Show("首次启动设置失败：" + ex.Message, "RemoteMouse"); }
+    }
+    void StartWebRemote()
+    {
+        var executable = System.IO.Path.Combine(AppContext.BaseDirectory, "TVRemoteMouse.WebRemote.exe");
+        if (!File.Exists(executable)) return;
+        try
+        {
+            var info = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true };
+            info.ArgumentList.Add("--embedded");
+            webRemote = Process.Start(info);
+        }
+        catch (Exception ex) { MessageBox.Show("网页遥控服务启动失败：" + ex.Message, "RemoteMouse"); }
+    }
+    void ShowWebRemoteQR()
+    {
+        if (webRemote == null || webRemote.HasExited) StartWebRemote();
+        var executable = System.IO.Path.Combine(AppContext.BaseDirectory, "TVRemoteMouse.WebRemote.exe");
+        if (!File.Exists(executable)) { MessageBox.Show("网页遥控组件未包含在当前安装包中。"); return; }
+        try
+        {
+            var info = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true };
+            info.ArgumentList.Add("--show-qr");
+            Process.Start(info)?.Dispose();
+        }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "网页遥控"); }
+    }
+    void CopyWebRemoteLink()
+    {
+        try
+        {
+            var info = new ProcessStartInfo(System.IO.Path.Combine(AppContext.BaseDirectory, "TVRemoteMouse.WebRemote.exe")) { UseShellExecute = false, CreateNoWindow = true };
+            info.ArgumentList.Add("--copy-link");
+            using var process = Process.Start(info) ?? throw new IOException("无法启动网页遥控组件。");
+            process.WaitForExit();
+            if (process.ExitCode != 0) throw new IOException("复制网页遥控链接失败。");
+            MessageBox.Show("网页遥控链接已复制。请只发给信任的设备。", "RemoteMouse");
+        }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "RemoteMouse"); }
+    }
+    void WebCertificateHelp() => MessageBox.Show("在 iPhone / iPad 的网页遥控器设置中下载电脑证书并安装描述文件，然后到“设置 → 通用 → 关于本机 → 证书信任设置”启用该证书。未安装时仍可用图片模式看屏幕。", "网页遥控 HTTPS 证书");
+    void RestartAsAdmin()
+    {
+        try { var info = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = true, Verb = "runas" }; info.ArgumentList.Add("--restart"); Process.Start(info); Quit(); }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "RemoteMouse"); }
+    }
+    void StopWebRemote() { if (webRemote != null) { if (!webRemote.HasExited) webRemote.Kill(true); webRemote.Dispose(); webRemote = null; } }
     void SaveSettings() { var tmp = SettingPath + ".tmp"; File.WriteAllText(tmp, JsonSerializer.Serialize(new { pin, appearance, surface })); File.Move(tmp, SettingPath, true); }
     static bool ValidPin(string value) => value.Length == 4 && value.All(c => c >= '0' && c <= '9');
     async Task Start()
@@ -94,7 +166,7 @@ public sealed class App : System.Windows.Application
             if (status.ValueKind != JsonValueKind.Object) throw new IOException("服务未响应，请检查端口 18765。");
             eventsCancel.Cancel(); eventsCancel = new(); _ = ReadEvents(eventsCancel.Token);
         }
-        catch (Exception ex) { MessageBox.Show(ex.Message, "TVRemoteMouse"); }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "RemoteMouse"); }
         finally { busy = false; await Refresh(); }
     }
     async Task Stop() { if (busy) return; busy = true; UpdateTray(); eventsCancel.Cancel(); if (core != null) { if (!core.HasExited) { core.Kill(true); await core.WaitForExitAsync(); } core.Dispose(); core = null; } status = default; busy = false; UpdateTray(); if (panel?.IsVisible == true && !editingPin) BuildPanel(); }
@@ -105,15 +177,15 @@ public sealed class App : System.Windows.Application
     void UpdateTray()
     {
         var color = busy ? Drawing.Color.Orange : !Online ? Drawing.Color.IndianRed : B("session_ready") ? Drawing.Color.MediumSeaGreen : B("client_connected") ? Drawing.Color.Orange : Drawing.Color.DodgerBlue;
-        using var bmp = new Drawing.Bitmap(32, 32); using (var g = Drawing.Graphics.FromImage(bmp)) { g.SmoothingMode = Drawing.Drawing2D.SmoothingMode.AntiAlias; using var pen = new Drawing.Pen(color, 1.8f); g.DrawRectangle(pen, 7, 3, 12, 20); var points = new[] { new Drawing.Point(13, 15), new Drawing.Point(13, 29), new Drawing.Point(18, 24), new Drawing.Point(21, 31), new Drawing.Point(24, 29), new Drawing.Point(21, 23), new Drawing.Point(28, 23) }; g.FillPolygon(Drawing.Brushes.White, points); g.DrawPolygon(pen, points); }
-        var handle = bmp.GetHicon(); using var icon = Drawing.Icon.FromHandle(handle); var copy = (Drawing.Icon)icon.Clone(); var old = tray.Icon; tray.Icon = copy; old?.Dispose(); DestroyIcon(handle); tray.Text = "TVRemoteMouse · " + Connection();
+        using var bmp = new Drawing.Bitmap(32, 32); using (var g = Drawing.Graphics.FromImage(bmp)) { g.SmoothingMode = Drawing.Drawing2D.SmoothingMode.AntiAlias; using var pen = new Drawing.Pen(color, 1.8f); g.DrawRectangle(pen, 3, 6, 23, 17); g.DrawLine(pen, 14, 23, 14, 26); g.DrawLine(pen, 9, 26, 19, 26); g.FillEllipse(Drawing.Brushes.White, 20, 16, 8, 12); g.DrawEllipse(pen, 20, 16, 8, 12); g.DrawLine(pen, 24, 18, 24, 21); }
+        var handle = bmp.GetHicon(); using var icon = Drawing.Icon.FromHandle(handle); var copy = (Drawing.Icon)icon.Clone(); var old = tray.Icon; tray.Icon = copy; old?.Dispose(); DestroyIcon(handle); tray.Text = "RemoteMouse · " + Connection();
     }
     [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr icon);
     static TextBlock Text(string text, double size = 13) => new() { Text = text, FontSize = size, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 4) };
     static Button Button(string label, Action action) => MakeButton(label, (_, _) => action());
     static Button MakeButton(string label, RoutedEventHandler action) { var b = new Button { Content = label, Padding = new Thickness(10, 7, 10, 7), Margin = new Thickness(2), MinHeight = 30 }; b.Click += action; return b; }
     Window Window(string title, double width) => new() { Title = title, Width = width, SizeToContent = SizeToContent.Height, Background = new SolidColorBrush(Color.FromRgb(248, 249, 251)), Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(System.IO.Path.Combine(AppContext.BaseDirectory, "AppIcon.ico"))), ResizeMode = ResizeMode.NoResize };
-    void ShowPanel() { if (panel == null) { panel = Window("TVRemoteMouse", 330); panel.ShowInTaskbar = false; panel.Topmost = true; panel.WindowStyle = WindowStyle.None; panel.Deactivated += (_, _) => { if (!editingPin) panel.Hide(); }; panel.SizeChanged += (_, _) => PositionPanel(); } BuildPanel(); panel.Show(); PositionPanel(); panel.Activate(); }
+    void ShowPanel() { if (panel == null) { panel = Window("RemoteMouse", 330); panel.ShowInTaskbar = false; panel.Topmost = true; panel.WindowStyle = WindowStyle.None; panel.Deactivated += (_, _) => { if (!editingPin) panel.Hide(); }; panel.SizeChanged += (_, _) => PositionPanel(); } BuildPanel(); panel.Show(); PositionPanel(); panel.Activate(); }
     void PositionPanel() { if (panel == null) return; var area = SystemParameters.WorkArea; panel.Left = area.Right - panel.ActualWidth - 12; panel.Top = area.Bottom - panel.ActualHeight - 12; }
     string PointerSource()=>File.Exists(System.IO.Path.Combine(support,"pointer-source.txt"))?File.ReadAllText(System.IO.Path.Combine(support,"pointer-source.txt")).Trim():"mouse";
     void SetPointer(string mode){File.WriteAllText(System.IO.Path.Combine(support,"pointer-source.txt"),mode);_=Settings(new{mode="mouse"});}
@@ -121,24 +193,40 @@ public sealed class App : System.Windows.Application
     void BuildPanel()
     {
         if (panel == null) return; panelBody = new StackPanel { Margin = new Thickness(18) }; panel.Content = panelBody;
-        panelBody.Children.Add(Text("TVRemoteMouse                 " + Connection(), 14)); panelBody.Children.Add(Text(S("client_name", Online ? "等待 iPhone 连接" : "服务已暂停"), 15));
-        var modes = new StackPanel { Orientation = Orientation.Horizontal }; foreach (var pair in new[] { ("鼠标", "mouse"), ("陀螺仪", "gyro") }) { var b = Button((PointerSource() == pair.Item2 ? "✓ " : "") + pair.Item1, () => SetPointer(pair.Item2)); b.IsEnabled = Online && pair.Item2 != "gyro"; modes.Children.Add(b); }
-        panelBody.Children.Add(modes);panelBody.Children.Add(Text("仅系统遥控器 · 陀螺仪尚未收到数据",11));
+        panelBody.Children.Add(Text("RemoteMouse                 " + (webSelected ? (webRemote != null && !webRemote.HasExited ? "网页遥控运行中" : "网页遥控已停止") : Connection()), 14));
+        var modes = new StackPanel { Orientation = Orientation.Horizontal };
+        modes.Children.Add(Button((!webSelected ? "✓ " : "") + "遥控器遥控", () => { webSelected = false; BuildPanel(); }));
+        modes.Children.Add(Button((webSelected ? "✓ " : "") + "网页遥控", () => { webSelected = true; BuildPanel(); }));
+        panelBody.Children.Add(modes);
+        if (webSelected)
+        {
+            panelBody.Children.Add(Text("iPhone / iPad 用 Safari 扫码连接，可使用触控、键盘、语音和屏幕查看。", 11));
+            var links = new WrapPanel(); links.Children.Add(Button("扫码连接", ShowWebRemoteQR)); links.Children.Add(Button("复制链接", CopyWebRemoteLink)); panelBody.Children.Add(links);
+            var auth = new StackPanel { Margin = new Thickness(0, 8, 0, 8), Background = new SolidColorBrush(Color.FromRgb(238, 243, 248)) };
+            auth.Children.Add(Text("网页遥控授权", 13));
+            var authButtons = new WrapPanel(); authButtons.Children.Add(Button("防火墙与权限", CheckInputAccess)); authButtons.Children.Add(Button("管理员窗口", RestartAsAdmin)); authButtons.Children.Add(Button("HTTPS 证书", WebCertificateHelp)); auth.Children.Add(authButtons);
+            auth.Children.Add(Text("允许专用网络访问；控制管理员窗口需同等权限；手机视频模式需信任本机证书。", 11)); panelBody.Children.Add(auth);
+            var actions = new WrapPanel(); actions.Children.Add(Button("使用说明", () => Open(System.IO.Path.Combine(AppContext.BaseDirectory, "README.md")))); actions.Children.Add(Button("网页日志", () => Open(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WatchBridge", "watchbridge.log")))); panelBody.Children.Add(actions);
+        }
+        else
+        {
+        panelBody.Children.Add(Text(S("client_name", Online ? "等待 iPhone 连接" : "服务已暂停"), 15));
         var row = new StackPanel { Orientation = Orientation.Horizontal }; row.Children.Add(Text("配对 PIN   ")); if (editingPin) { pinEdit = new TextBox { Text = pin, Width = 60, VerticalContentAlignment = VerticalAlignment.Center }; row.Children.Add(pinEdit); row.Children.Add(Button("保存", () => _ = SavePin())); row.Children.Add(Button("取消", () => { editingPin = false; BuildPanel(); })); } else { row.Children.Add(Text(pin, 15)); row.Children.Add(Button("修改", () => { editingPin = true; BuildPanel(); pinEdit!.Focus(); pinEdit.SelectAll(); })); }
         panelBody.Children.Add(row);
         if (editingPin) panelBody.Children.Add(Text("保存后重启服务，当前连接会断开。", 11)); pinError = Text("", 11); pinError.Foreground = Brushes.IndianRed; pinError.Visibility = Visibility.Collapsed; panelBody.Children.Add(pinError);
         panelBody.Children.Add(Button("运行权限：" + Privilege() + " · 检查", CheckInputAccess)); panelBody.Children.Add(Button("遥控控制台 ↗", ShowConsole));
-        var footer = new StackPanel { Orientation = Orientation.Horizontal }; footer.Children.Add(Button(Online ? "暂停服务" : "启动服务", () => { if (Online) _ = Stop(); else _ = Start(); })); var more = Button("•••", () => { }); var menu = new ContextMenu(); foreach (var item in new[] { ("系统日志", (Action)ShowLogs), ("重启服务", () => _ = Restart()), ("开机启动", ToggleStartup), ("退出应用", Quit) }) { var entry = new MenuItem { Header = item.Item1 }; entry.Click += (_, _) => item.Item2(); menu.Items.Add(entry); }
+        }
+        var footer = new StackPanel { Orientation = Orientation.Horizontal }; footer.Children.Add(Button(webSelected ? (webRemote != null && !webRemote.HasExited ? "暂停网页遥控" : "启动网页遥控") : (Online ? "暂停遥控器" : "启动遥控器"), () => { if (webSelected) { if (webRemote != null && !webRemote.HasExited) StopWebRemote(); else StartWebRemote(); BuildPanel(); } else { if (Online) _ = Stop(); else _ = Start(); } })); var more = Button("•••", () => { }); var menu = new ContextMenu(); foreach (var item in new[] { ("系统日志", (Action)ShowLogs), ("重启遥控器", () => _ = Restart()), ("开机启动", ToggleStartup), ("退出应用", Quit) }) { var entry = new MenuItem { Header = item.Item1 }; entry.Click += (_, _) => item.Item2(); menu.Items.Add(entry); }
         more.Click += (_, _) => { menu.PlacementTarget = more; menu.IsOpen = true; }; footer.Children.Add(more); panelBody.Children.Add(footer);
     }
     async Task SavePin() { string value = pinEdit!.Text; if (!ValidPin(value)) { pinError!.Text = "请输入四位数字（0000–9999）"; pinError.Visibility = Visibility.Visible; return; } string old = pin; pin = value; try { SaveSettings(); } catch (Exception ex) { pin = old; pinError!.Text = ex.Message; pinError.Visibility = Visibility.Visible; return; } editingPin = false; bool active = core != null && !core.HasExited; BuildPanel(); if (active) await Restart(); }
     string Privilege() { using var identity = System.Security.Principal.WindowsIdentity.GetCurrent(); return new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator) ? "管理员" : "普通用户"; }
     void CheckInputAccess() { if (MessageBox.Show("当前权限：" + Privilege() + "。\nWindows 普通桌面不需要辅助功能授权。要控制管理员窗口，本工具也需同等权限。\n首次连接请允许核心程序在专用网络中通过防火墙。\n\n是否打开 Windows 防火墙设置？", "运行权限", MessageBoxButton.YesNo) == MessageBoxResult.Yes) Open("windowsdefender://network"); }
     void Open(string path) { try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show(ex.Message); } }
-    void ToggleStartup() { using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run"); if (key.GetValue("TVRemoteMouse") != null) key.DeleteValue("TVRemoteMouse", false); else key.SetValue("TVRemoteMouse", "\"" + Environment.ProcessPath + "\""); }
+    void ToggleStartup() { using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run"); if (key.GetValue("RemoteMouse") != null) key.DeleteValue("RemoteMouse", false); else key.SetValue("RemoteMouse", "\"" + Environment.ProcessPath + "\""); }
     void ShowLogs()
     {
-        var window=Window("TVRemoteMouse 系统日志",900);window.SizeToContent=SizeToContent.Manual;window.Height=640;window.ResizeMode=ResizeMode.CanResize;
+        var window=Window("RemoteMouse 系统日志",900);window.SizeToContent=SizeToContent.Manual;window.Height=640;window.ResizeMode=ResizeMode.CanResize;
         var layout=new DockPanel { Margin=new Thickness(16) };window.Content=layout;
         var toolbar=new WrapPanel();DockPanel.SetDock(toolbar,Dock.Top);layout.Children.Add(toolbar);
         var search=new TextBox { Width=220,Margin=new Thickness(3),ToolTip="搜索日志" };toolbar.Children.Add(search);
@@ -148,7 +236,7 @@ public sealed class App : System.Windows.Application
         string current="";
         void Filter() { text.Text=string.Join("\n",current.Split('\n').Where(line=>(search.Text.Length==0||line.Contains(search.Text,StringComparison.OrdinalIgnoreCase))&&(level.SelectedIndex==0||line.Contains((string)level.SelectedItem)))); }
         void Read() { try { using var file=new FileStream(LogPath,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete);if(file.Length>300000)file.Seek(-300000,SeekOrigin.End);using var reader=new StreamReader(file);current=reader.ReadToEnd();Filter(); } catch(IOException ex) { text.Text="暂无可读日志："+ex.Message; } }
-        toolbar.Children.Add(Button("刷新",Read));toolbar.Children.Add(Button("导出",()=>{var dialog=new Microsoft.Win32.SaveFileDialog{FileName="TVRemoteMouse.log",Filter="日志|*.log"};if(dialog.ShowDialog(window)==true)try{File.WriteAllText(dialog.FileName,text.Text);}catch(Exception ex){MessageBox.Show(ex.Message);}}));toolbar.Children.Add(Button("打开文件",()=>Open(LogPath)));
+        toolbar.Children.Add(Button("刷新",Read));toolbar.Children.Add(Button("导出",()=>{var dialog=new Microsoft.Win32.SaveFileDialog{FileName="RemoteMouse.log",Filter="日志|*.log"};if(dialog.ShowDialog(window)==true)try{File.WriteAllText(dialog.FileName,text.Text);}catch(Exception ex){MessageBox.Show(ex.Message);}}));toolbar.Children.Add(Button("打开文件",()=>Open(LogPath)));
         search.TextChanged+=(_,_)=>Filter();level.SelectionChanged+=(_,_)=>Filter();var timer=new DispatcherTimer{Interval=TimeSpan.FromSeconds(2)};timer.Tick+=(_,_)=>{if(live.IsChecked==true)Read();};window.Closed+=(_,_)=>timer.Stop();timer.Start();Read();window.Show();
     }
     async Task Settings(object data) { try { var response = await http.PostAsync("/api/touchpad_settings", new StringContent(JsonSerializer.Serialize(data), Encoding.UTF8, "application/json")); response.EnsureSuccessStatusCode(); await Refresh(); } catch (Exception ex) { MessageBox.Show(ex.Message, "设置失败"); } }
@@ -158,7 +246,7 @@ public sealed class App : System.Windows.Application
     void ShowConsole()
     {
         panel?.Hide(); if (console != null) { console.Show(); console.Activate(); return; }
-        console = Window("TVRemoteMouse 遥控控制台", 1100); console.SizeToContent = SizeToContent.Manual; console.Height = 780; console.ResizeMode = ResizeMode.CanResize; console.Closing += (_, e) => { if (!stopping) { e.Cancel = true; console.Hide(); } };
+        console = Window("RemoteMouse 遥控控制台", 1100); console.SizeToContent = SizeToContent.Manual; console.Height = 780; console.ResizeMode = ResizeMode.CanResize; console.Closing += (_, e) => { if (!stopping) { e.Cancel = true; console.Hide(); } };
         var stack = new StackPanel { Margin = new Thickness(20) }; console.Content = new ScrollViewer { Content = stack, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }; stateLabel = Text(Connection() + " · " + S("client_name", "等待 iPhone"), 20); stack.Children.Add(stateLabel);
         var motionPanel = new StackPanel { Background = new SolidColorBrush(Color.FromRgb(235, 240, 247)), Margin = new Thickness(0, 12, 0, 8) };
         motionPanel.Children.Add(Text("鼠标与陀螺仪", 18));
@@ -247,7 +335,7 @@ public sealed class App : System.Windows.Application
         if(trails.TryGetValue(finger,out var trail)){trail.Points.Add(p);if(trail.Points.Count>1000)trail.Points.RemoveAt(0);}
     }
 
-    protected override void OnExit(ExitEventArgs e) { eventsCancel.Cancel();if(core!=null){if(!core.HasExited)core.Kill(true);core.Dispose();}tray.Visible=false;tray.Icon?.Dispose();tray.Dispose();http.Dispose();base.OnExit(e); }
+    protected override void OnExit(ExitEventArgs e) { eventsCancel.Cancel();if(core!=null){if(!core.HasExited)core.Kill(true);core.Dispose();}if(webRemote!=null){if(!webRemote.HasExited)webRemote.Kill(true);webRemote.Dispose();}tray.Visible=false;tray.Icon?.Dispose();tray.Dispose();http.Dispose();base.OnExit(e); }
     void Quit() { stopping=true;Shutdown(); }
     sealed class UniformGridCompat : System.Windows.Controls.Primitives.UniformGrid { public UniformGridCompat(int columns) { Columns = columns; } }
 }
