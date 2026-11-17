@@ -26,7 +26,7 @@ RemoteMouse 让 iPhone 或 iPad 在同一局域网内遥控 Mac 和 Windows 电�
 | <img src="docs/images/zh/ios_tv_control.jpg" width="220" alt="控制中心中的遥控器入口" /> | <img src="docs/images/zh/ios_apple_tv_remote.png" width="220" alt="iPhone 遥控器操作界面" /> |
 | **屏幕右上角下滑**打开控制中心，点击红圈标记的遥控器图标<br>*(若未显示，前往 **设置 → 控制中心** 手动添加)* | 上方触控板滑动导航 / 移动光标<br>下方点按确认、返回、播放、音量等功能按键 |
 
-📖 完整图文教程与演示：[博客文章](https://corvo.myseu.cn/2026/09/27/2026-09-27-%E7%94%A8iPhone%E9%81%A5%E6%8E%A7%E5%99%A8%E6%8E%A7%E5%88%B6%E4%BD%A0%E7%9A%84Android-TV%E5%92%8CMac/)
+
 
 ---
 
