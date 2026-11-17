@@ -4,6 +4,7 @@
     <UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms><EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Nullable>enable</Nullable><ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>RemoteMouse</AssemblyName><ApplicationIcon>AppIcon.ico</ApplicationIcon>
+    <Version>1.1.0</Version>
     <PublishSingleFile>false</PublishSingleFile><SelfContained>true</SelfContained>
   </PropertyGroup>
   <ItemGroup><Content Include="AppIcon.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>

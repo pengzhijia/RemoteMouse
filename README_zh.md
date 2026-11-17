@@ -4,6 +4,15 @@
 
 RemoteMouse 让 iPhone 或 iPad 在同一局域网内遥控 Mac 和 Windows 电脑。你可以直接使用控制中心自带的「Apple TV 遥控器」，也可以扫码打开网页遥控。网页遥控提供触控板、键盘、语音输入、快捷键和屏幕查看；Mac 版还支持 iPad 触屏与 Apple Pencil。项目源码保留 Android TV 接收端。
 
+## 两种遥控方式
+
+| 方式 | 怎么连接 | 适合做什么 |
+| :--- | :--- | :--- |
+| **控制中心遥控器** | iPhone/iPad 打开控制中心 → Apple TV 遥控器 → 选择电脑并输入配对码 | 用系统自带界面移动光标、点击和操作媒体按键；也可连接 Android TV 接收端 |
+| **网页遥控** | 在电脑的 RemoteMouse 菜单栏或托盘面板选择「网页遥控」→ 打开扫码入口 → 手机用 Safari 扫码 | 触控板手势、键盘与中文输入、语音指令、快捷键、查看电脑屏幕 |
+
+网页遥控无需在手机安装 App。手机与电脑须处于同一局域网；连接链接包含访问令牌，请仅分享给受信任的设备。Mac 首次使用需给 `WebRemoteBridge` 授予辅助功能权限，查看屏幕还需屏幕录制权限。视频模式的本地 HTTPS 证书设置见[网页遥控使用说明](integrations/web-remote/docs/使用说明.md)；Windows 的设置见[Windows 网页遥控说明](integrations/web-remote/windows/README.md)。
+
 <!-- TODO: 把下面的图替换成 15–30 秒实机录屏：
      控制中心 → Apple TV 遥控器 → 选择设备 → 操控电视 / Mac。
      保存为 docs/images/zh/demo.gif 后替换 <img> 的 src。 -->
@@ -23,7 +32,7 @@ RemoteMouse 让 iPhone 或 iPad 在同一局域网内遥控 Mac 和 Windows 电�
 
 ## 下载
 
-macOS 与 Windows 安装包见 [v1.0.0 发布页](https://github.com/pengzhijia/RemoteMouse/releases/tag/v1.0.0)。源码可[下载 ZIP](https://github.com/pengzhijia/RemoteMouse/archive/refs/heads/main.zip)或克隆本仓库。Android TV 版按下方步骤从源码构建。
+macOS 与 Windows 安装包见 [v1.1.0 发布页](https://github.com/pengzhijia/RemoteMouse/releases/tag/v1.1.0)。源码可[下载 ZIP](https://github.com/pengzhijia/RemoteMouse/archive/refs/heads/main.zip)或克隆本仓库。Android TV 版按下方步骤从源码构建。
 
 ---
 
@@ -32,7 +41,7 @@ macOS 与 Windows 安装包见 [v1.0.0 发布页](https://github.com/pengzhijia/
 | | 支持范围 | 说明 |
 | :--- | :--- | :--- |
 | **遥控端** | 控制中心带原生 **Apple TV 遥控器**的 iPhone / iPad | 手机侧无需安装任何 App |
-| **macOS 被控端** | Apple Silicon 与 Intel Mac（菜单栏 App + CLI） | 需授予「辅助功能」权限 |
+| **macOS 被控端** | Apple Silicon Mac（发布包）；Intel Mac 可自行编译 | 需授予「辅助功能」权限 |
 | **Windows 被控端** | Windows 10/11 x64（托盘应用） | 需允许专用网络访问 |
 | **Android 被控端** | Android TV、Google TV、电视盒子、模拟器 | 需开启网络 ADB，见[功能限制](#功能限制) |
 | **网络** | 遥控端与被控端处于同一局域网 | 需关闭 AP 隔离 / 访客网络 |
@@ -47,13 +56,13 @@ macOS 与 Windows 安装包见 [v1.0.0 发布页](https://github.com/pengzhijia/
 
 - **Android TV 必须开启网络 ADB。** Android 禁止普通应用向其它 App 注入方向键 / 确认键，因此按键注入依赖本地 ADB 通道；无障碍服务仅作兜底，并负责全局返回 / 主页动作。完整步骤见 [Android TV 前置要求](#android-tv)。
 - **配对使用固定 PIN。** iPhone 提示输入配对码时，输入 **`1111`** 即可。
-- v1.0.0 macOS 发布包使用临时签名，首次启动 Gatekeeper 可能告警，并需为此构建重新授予辅助功能权限，见 [macOS 前置要求](#macos)。
+- v1.1.0 macOS 发布包使用临时签名，首次启动 Gatekeeper 可能告警，并需为此构建重新授予辅助功能权限，见 [macOS 前置要求](#macos)。
 
 ---
 
 ## 快速上手
 
-1. 按[从源码构建](#从源码构建)编译并安装桌面版或 Android TV 接收端。
+1. 从[发布页](#下载)安装桌面版；Android TV 接收端按[从源码构建](#从源码构建)编译安装。
 2. **让 iPhone 与被控端接入同一 Wi-Fi**（关闭 AP 隔离）。
 3. **授予权限**——macOS 授予辅助功能；Android TV 开启网络 ADB 并在弹窗中点「始终允许」。详见下文。
 4. **打开控制中心找到遥控器**：
@@ -63,21 +72,17 @@ macOS 与 Windows 安装包见 [v1.0.0 发布页](https://github.com/pengzhijia/
 
 ### macOS
 
-安装后 macOS Gatekeeper 会拦截自签名应用，放行一次即可：
+v1.1.0 发布包使用临时签名。安装后如果 macOS 阻止打开，请在「系统设置 → 隐私与安全性」中选择允许打开；仍提示应用损坏时，可在终端执行：
 
 ```bash
-# 方式 A（推荐）：信任项目内置证书
-./scripts/import_certificate.sh Corvo_Development.p12
-
-# 方式 B：移除隔离属性
 xattr -dr com.apple.quarantine /Applications/RemoteMouse.app
 ```
 
-然后授予 **系统设置 → 隐私与安全性 → 辅助功能 → RemoteMouse**（用命令行调试则勾选终端）。启动应用后即可通过菜单栏图标使用。
+然后授予 **系统设置 → 隐私与安全性 → 辅助功能 → RemoteMouse**（用命令行调试则勾选终端）。网页遥控还需为 `WebRemoteBridge` 单独授权；看屏幕时授予屏幕录制权限。
 
 ### Windows
 
-解压下载的 `AppleTVRemote-windows-x86_64.zip`（或直接运行 `AppleTVRemote-windows-x86_64.exe`）即可（无需额外权限）：程序直接在后台以系统托盘图标形式运行（不占用终端窗口），并自动在浏览器打开 Web 控制台（`http://127.0.0.1:8765`），可在其中切换触控板模式 / 调整速度。首次运行时请在 Windows 防火墙弹窗中**允许专用网络访问**，否则 iPhone 无法发现设备。
+完整解压 `RemoteMouse-windows-x64.zip`，运行 `RemoteMouse.exe`。程序在系统托盘运行；打开托盘面板即可切换「遥控器遥控 / 网页遥控」。首次运行时请在 Windows 防火墙弹窗中**允许专用网络访问**，否则手机无法连接。
 
 > 已支持：系统托盘右键菜单（启停模拟服务、切换触控板模式、开机自启、查看日志、退出）、方向键 / 确认 / 返回 (Esc)、鼠标光标与点击、播放暂停（双击下一曲、三击上一曲）、音量 / 静音、电源键关闭/唤醒显示器。
 
@@ -234,8 +239,6 @@ adb shell settings put secure accessibility_enabled 1
 **macOS 提示应用损坏 / 来自不受信任的开发者？**
 ```bash
 xattr -dr com.apple.quarantine /Applications/RemoteMouse.app
-# 或信任内置证书：
-./scripts/import_certificate.sh Corvo_Development.p12
 ```
 
 ---

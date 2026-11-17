@@ -4,6 +4,15 @@
 
 RemoteMouse lets an iPhone or iPad control a Mac or Windows PC on the same local network. Choose the built-in Apple TV Remote in Control Center, or open the browser remote by scanning a QR code. The browser remote provides a touchpad, keyboard, voice input, shortcuts, and screen viewing; on Mac, it also supports iPad touch and Apple Pencil. An Android TV receiver is included in the source tree.
 
+## Two ways to connect
+
+| Mode | Connect | Use it for |
+| :--- | :--- | :--- |
+| **Control Center remote** | Open Apple TV Remote on iPhone/iPad, select the computer, and enter the pairing code | Pointer movement, clicks, and media controls in the built-in iOS interface; the Android TV receiver also supports this mode |
+| **Browser remote** | In the Mac menu bar or Windows tray panel, select Browser Remote, open the QR code, and scan it with Safari | Touchpad gestures, keyboard and text input, voice commands, shortcuts, and screen viewing |
+
+The browser remote needs no phone app. Both devices must be on the same local network. Its connection link contains an access token, so share it only with trusted devices. On Mac, grant `WebRemoteBridge` Accessibility permission and Screen Recording permission for viewing the screen. See the [browser remote guide](integrations/web-remote/docs/使用说明.md) and [Windows guide](integrations/web-remote/windows/README.md) for local HTTPS video setup.
+
 <!-- TODO: replace the image below with a 15–30s screen recording:
      Control Center → Apple TV Remote → select device → navigate the TV / Mac.
      Save it as docs/images/en/demo.gif and swap the <img> src. -->
@@ -23,7 +32,7 @@ Swipe down from the top-right corner to open Control Center, tap "Apple TV Remot
 
 ## Download
 
-Get the current macOS and Windows builds from [Release v1.0.0](https://github.com/pengzhijia/RemoteMouse/releases/tag/v1.0.0). For source code, [download the ZIP](https://github.com/pengzhijia/RemoteMouse/archive/refs/heads/main.zip) or clone this repository. Android TV can be built from source using the instructions below.
+Get the current macOS and Windows builds from [Release v1.1.0](https://github.com/pengzhijia/RemoteMouse/releases/tag/v1.1.0). For source code, [download the ZIP](https://github.com/pengzhijia/RemoteMouse/archive/refs/heads/main.zip) or clone this repository. Android TV can be built from source using the instructions below.
 
 ---
 
@@ -32,7 +41,7 @@ Get the current macOS and Windows builds from [Release v1.0.0](https://github.co
 | | Supported | Notes |
 | :--- | :--- | :--- |
 | **Controller** | iPhone / iPad with the native **Apple TV Remote** in Control Center | No app install needed on the phone |
-| **macOS targets** | Apple Silicon & Intel Macs (menu bar app + CLI) | Requires Accessibility permission |
+| **macOS targets** | Apple Silicon Mac (release build); Intel Mac can be built from source | Requires Accessibility permission |
 | **Windows targets** | Windows 10/11 x64 (tray app) | Requires private-network access |
 | **Android targets** | Android TV, Google TV, TV boxes, emulators | Requires network ADB; see [limitations](#limitations) |
 | **Network** | Controller and target on the same LAN | AP isolation / guest Wi-Fi must be off |
@@ -47,13 +56,13 @@ Get the current macOS and Windows builds from [Release v1.0.0](https://github.co
 
 - **Android TV needs network ADB.** Android blocks ordinary apps from injecting D-pad / Select keys into other apps, so key injection relies on a local ADB channel. The Accessibility Service is only a fallback and handles global actions (Back / Home). Full setup: [Android TV prerequisites](#android-tv).
 - **Pairing uses a fixed PIN.** When the iPhone asks for a pairing code, enter **`1111`**.
-- The v1.0.0 macOS release uses ad hoc signing, so Gatekeeper may warn on first launch and Accessibility permission must be granted for this build. See [macOS prerequisites](#macos).
+- The v1.1.0 macOS release uses ad hoc signing, so Gatekeeper may warn on first launch and Accessibility permission must be granted for this build. See [macOS prerequisites](#macos).
 
 ---
 
 ## Quick start
 
-1. **Build and install** the desktop app or Android TV receiver using [Build from source](#build-from-source).
+1. **Install** the desktop app from the [release](#download), or build the Android TV receiver using [Build from source](#build-from-source).
 2. **Put your iPhone and the target on the same Wi-Fi** (AP isolation off).
 3. **Grant permissions** — Accessibility on macOS; network ADB + the on-screen "Always allow" prompt on Android TV. Details below.
 4. **Open Control Center to find the Remote**:
@@ -63,17 +72,13 @@ Get the current macOS and Windows builds from [Release v1.0.0](https://github.co
 
 ### macOS
 
-After installing, macOS Gatekeeper will flag the self-signed app. Clear it once:
+The v1.1.0 release uses ad hoc signing. If macOS blocks the app, use **System Settings → Privacy & Security → Open Anyway**. If it still reports a damaged app, run:
 
 ```bash
-# Option A (recommended): trust the bundled certificate
-./scripts/import_certificate.sh Corvo_Development.p12
-
-# Option B: strip the quarantine attribute
 xattr -dr com.apple.quarantine /Applications/RemoteMouse.app
 ```
 
-Then grant **System Settings → Privacy & Security → Accessibility → RemoteMouse** (or your terminal if running the CLI). Launch the app and use the menu bar icon.
+Then grant **System Settings → Privacy & Security → Accessibility → RemoteMouse** (or your terminal if running the CLI). The browser remote also needs separate Accessibility permission for `WebRemoteBridge` and Screen Recording permission to show the screen.
 
 ### Windows
 
@@ -238,8 +243,6 @@ adb shell settings put secure accessibility_enabled 1
 **macOS says the app is damaged / from an unidentified developer?**
 ```bash
 xattr -dr com.apple.quarantine /Applications/RemoteMouse.app
-# or trust the bundled certificate:
-./scripts/import_certificate.sh Corvo_Development.p12
 ```
 
 ---
