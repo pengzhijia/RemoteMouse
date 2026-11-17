@@ -27,7 +27,7 @@ final class ConsoleModel: NSObject, ObservableObject, URLSessionDataDelegate {
     @Published var mappingError: String?
     private var mappingsURL: URL {
         if ProcessInfo.processInfo.arguments.contains("--ui-preview") {
-            return FileManager.default.temporaryDirectory.appendingPathComponent("TVRemoteMouse-preview-\(ProcessInfo.processInfo.processIdentifier)/button-mappings.txt")
+            return FileManager.default.temporaryDirectory.appendingPathComponent("RemoteMouse-preview-\(ProcessInfo.processInfo.processIdentifier)/button-mappings.txt")
         }
         return URL(fileURLWithPath: MouseEventServer.shared.supportDirectoryPath).appendingPathComponent("button-mappings.txt")
     }
@@ -194,7 +194,7 @@ final class ConsoleModel: NSObject, ObservableObject, URLSessionDataDelegate {
         }
     }
     func exportLogs() {
-        let panel = NSSavePanel(); panel.nameFieldStringValue = "TVRemoteMouse.log"
+        let panel = NSSavePanel(); panel.nameFieldStringValue = "RemoteMouse.log"
         if panel.runModal() == .OK, let url = panel.url { try? FileManager.default.copyItem(at: ProcessManager.shared.logFilePath, to: url) }
     }
 }
@@ -209,7 +209,7 @@ final class ConsoleWindow {
         model.tab = tab; model.start()
         if window == nil {
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1100, height: 800), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-            w.title = "TVRemoteMouse 控制台"; w.minSize = NSSize(width: 900, height: 600)
+            w.title = "RemoteMouse 控制台"; w.minSize = NSSize(width: 900, height: 600)
             w.contentViewController = NSHostingController(rootView: ConsoleView(model: model))
             w.isReleasedWhenClosed = false; w.center(); window = w
         }

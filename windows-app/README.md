@@ -1,10 +1,10 @@
 # RemoteMouse for Windows
 
-网页遥控服务已随安装目录中的 `TVRemoteMouse.WebRemote.exe` 集成。启动主程序后在托盘面板点「网页遥控与屏幕查看 · 打开扫码入口」；手机用 Safari 扫码。网页遥控使用 8765/8766 端口，与系统 Apple TV 遥控器接收端并行运行。需要在 Windows 防火墙允许此组件访问专用网络。看屏幕的视频模式证书设置见 [网页遥控 Windows 说明](../integrations/web-remote/windows/README.md)。
+网页遥控服务已随安装目录中的 `RemoteMouse.WebRemote.exe` 集成。启动主程序后在托盘面板点「网页遥控与屏幕查看 · 打开扫码入口」；手机用 Safari 扫码。网页遥控使用 8765/8766 端口，与系统 Apple TV 遥控器接收端并行运行。需要在 Windows 防火墙允许此组件访问专用网络。看屏幕的视频模式证书设置见 [网页遥控 Windows 说明](../integrations/web-remote/windows/README.md)。
 
 Windows 10/11 x64 原生 WPF 控制台和托盘面板，附带 .NET 桌面运行时，无需单独安装 .NET。解压整个目录后启动 `RemoteMouse.exe`，保留所有随附文件。托盘面板可在「遥控器遥控 / 网页遥控」之间切换，网页遥控的扫码、链接和授权集中在后者。
 
-在同一局域网中，打开 iPhone 控制中心的 Apple TV 遥控器，选择本机计算机名称。默认 PIN 为 1111，可在托盘面板修改。保存新 PIN 后服务重启，当前连接暂时断开；已配对设备可能不会再次要求输入 PIN。PIN、外观和按键映射保存在 `%LOCALAPPDATA%\TVRemoteMouse`，不会覆盖 macOS 设置。
+在同一局域网中，打开 iPhone 控制中心的 Apple TV 遥控器，选择本机计算机名称。默认 PIN 为 1111，可在托盘面板修改。保存新 PIN 后服务重启，当前连接暂时断开；已配对设备可能不会再次要求输入 PIN。PIN、外观和按键映射保存在 `%LOCALAPPDATA%\RemoteMouse`，不会覆盖 macOS 设置。
 
 点击托盘可切换鼠标/方向键模式、查看设备名称、修改 PIN、检查运行权限，打开原生遥控控制台。面板按内容自动调整高度；绿色已连接、蓝色等待、橙色处理中/连接中、红色停止。更多菜单提供日志、重启、开机启动和退出。开机启动菜单再次点击即取消。
 
@@ -14,7 +14,7 @@ Windows 10/11 x64 原生 WPF 控制台和托盘面板，附带 .NET 桌面运行
 
 Windows 普通桌面无 macOS 辅助功能授权流程。要控制管理员窗口，本工具也需要同等权限；不自动申请提权。首次运行按 Windows 提示允许程序在专用网络中通过防火墙。“检查”解释输入权限并打开 Windows 安全中心的防火墙界面。程序不自动修改防火墙规则。
 
-日志：`%LOCALAPPDATA%\TVRemoteMouse\config\atv\atv-cli.log`。退出只终止本程序启动的核心进程。
+日志：`%LOCALAPPDATA%\RemoteMouse\config\atv\atv-cli.log`。退出只终止本程序启动的核心进程。
 
 ## 构建和验证
 

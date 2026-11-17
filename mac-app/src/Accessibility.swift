@@ -37,11 +37,11 @@ enum AccessibilityHelper {
     /// Explain and open Accessibility settings for the app process that posts input.
     static func showHostPermissionGuide() {
         let alert = NSAlert()
-        alert.messageText = "请授权 TVRemoteMouse 控制鼠标"
+        alert.messageText = "请授权 RemoteMouse 控制鼠标"
         alert.informativeText = """
-鼠标和键盘事件由 TVRemoteMouse 主程序发出，需要为当前 App 开启辅助功能权限。
+鼠标和键盘事件由 RemoteMouse 主程序发出，需要为当前 App 开启辅助功能权限。
 
-请在辅助功能列表中启用当前 TVRemoteMouse App。后台 atv-cli helper 不需要单独授权。
+请在辅助功能列表中启用当前 RemoteMouse App。后台 atv-cli helper 不需要单独授权。
 """
         alert.alertStyle = .warning
         alert.addButton(withTitle: "打开系统设置")

@@ -2,7 +2,7 @@
 
 > [English Version](README.md) | **中文版本**
 
-**通过局域网用 iPhone 或 iPad 遥控 Mac 和 Windows 电脑。** RemoteMouse 集成控制中心自带的「Apple TV 遥控器」和网页遥控，支持触控板、键盘、语音输入与屏幕查看；同时保留 Android TV 接收端。
+RemoteMouse 让 iPhone 或 iPad 在同一局域网内遥控 Mac 和 Windows 电脑。你可以直接使用控制中心自带的「Apple TV 遥控器」，也可以扫码打开网页遥控。网页遥控提供触控板、键盘、语音输入、快捷键和屏幕查看；Mac 版还支持 iPad 触屏与 Apple Pencil。项目源码保留 Android TV 接收端。
 
 <!-- TODO: 把下面的图替换成 15–30 秒实机录屏：
      控制中心 → Apple TV 遥控器 → 选择设备 → 操控电视 / Mac。
@@ -21,9 +21,9 @@
 
 ---
 
-## 源码下载
+## 下载
 
-[下载源码 ZIP](https://github.com/pengzhijia/RemoteMouse/archive/refs/heads/main.zip)，或克隆本仓库。构建步骤见[从源码构建](#从源码构建)。仓库不包含已构建的安装包。
+macOS 与 Windows 安装包见 [v1.0.0 发布页](https://github.com/pengzhijia/RemoteMouse/releases/tag/v1.0.0)。源码可[下载 ZIP](https://github.com/pengzhijia/RemoteMouse/archive/refs/heads/main.zip)或克隆本仓库。Android TV 版按下方步骤从源码构建。
 
 ---
 
@@ -33,6 +33,7 @@
 | :--- | :--- | :--- |
 | **遥控端** | 控制中心带原生 **Apple TV 遥控器**的 iPhone / iPad | 手机侧无需安装任何 App |
 | **macOS 被控端** | Apple Silicon 与 Intel Mac（菜单栏 App + CLI） | 需授予「辅助功能」权限 |
+| **Windows 被控端** | Windows 10/11 x64（托盘应用） | 需允许专用网络访问 |
 | **Android 被控端** | Android TV、Google TV、电视盒子、模拟器 | 需开启网络 ADB，见[功能限制](#功能限制) |
 | **网络** | 遥控端与被控端处于同一局域网 | 需关闭 AP 隔离 / 访客网络 |
 
@@ -46,7 +47,7 @@
 
 - **Android TV 必须开启网络 ADB。** Android 禁止普通应用向其它 App 注入方向键 / 确认键，因此按键注入依赖本地 ADB 通道；无障碍服务仅作兜底，并负责全局返回 / 主页动作。完整步骤见 [Android TV 前置要求](#android-tv)。
 - **配对使用固定 PIN。** iPhone 提示输入配对码时，输入 **`1111`** 即可。
-- macOS 版使用自签名证书签名，首次启动 Gatekeeper 会告警，见 [macOS 前置要求](#macos)。
+- v1.0.0 macOS 发布包使用临时签名，首次启动 Gatekeeper 可能告警，并需为此构建重新授予辅助功能权限，见 [macOS 前置要求](#macos)。
 
 ---
 
@@ -72,7 +73,7 @@
 xattr -dr com.apple.quarantine /Applications/RemoteMouse.app
 ```
 
-然后授予 **系统设置 → 隐私与安全性 → 辅助功能 → TVRemoteMouse**（用命令行调试则勾选终端）。启动应用后即可通过菜单栏图标使用。
+然后授予 **系统设置 → 隐私与安全性 → 辅助功能 → RemoteMouse**（用命令行调试则勾选终端）。启动应用后即可通过菜单栏图标使用。
 
 ### Windows
 
@@ -154,7 +155,7 @@ python3 scripts/bridge_emulator.py stop         # 停止
 
 ![模拟器桥接工作流](docs/images/zh/emulator_operation_flow.svg)
 
-### TVRemoteMouse Web 控制面板（端口 18765）
+### RemoteMouse Web 控制面板（端口 18765）
 
 启动菜单栏 App 后，浏览器访问 **`http://127.0.0.1:18765`**：
 
@@ -165,7 +166,7 @@ python3 scripts/bridge_emulator.py stop         # 停止
 - 动力学预设：`0.5x 精准`、`1.0x 标准`、`1.5x 快速`、`2.2x 极速大屏`。
 - 已连接设备信息与实时音量遥测。
 
-### TVRemoteMouse 宿主诊断（端口 18766）
+### RemoteMouse 宿主诊断（端口 18766）
 
 访问 **`http://127.0.0.1:18766`** 查看进程健康、端口绑定与实时协议握手：
 
@@ -243,7 +244,7 @@ xattr -dr com.apple.quarantine /Applications/RemoteMouse.app
 
 MIT。仅供技术学习与局域网设备互通研究使用。
 
-## TVRemoteMouse Windows 原生版
+## RemoteMouse Windows 原生版
 
 Windows 10/11 x64 原生托盘面板和 WPF 遥控控制台已与自定义 macOS 版同步；使用方法、构建方式和实测限制见 [Windows 说明](windows-app/README.md)。构建包为 build/RemoteMouse-windows-x64.zip，解压全部文件后运行 RemoteMouse.exe。
 

@@ -4,11 +4,42 @@
  
  let port = UInt16(argValue("--port") ?? ProcessInfo.processInfo.environment["WATCHBRIDGE_PORT"] ?? "8765") ?? 8765
  let token = loadOrCreateToken()
-+let embeddedInTVRemoteMouse = ProcessInfo.processInfo.environment["TVREMOTE_EMBEDDED"] == "1"
++let embeddedInRemoteMouse = ProcessInfo.processInfo.environment["TVREMOTE_EMBEDDED"] == "1"
  
  // MARK: - 键盘
  
-@@ -2467,26 +2468,36 @@
+@@ -606,6 +607,14 @@
+     /// 所有连着的会话；网页每 3 秒 ping 一次，30 秒没动静（设备睡了 / 断网）就当断开，让屏幕适配及时恢复
+     private static var live = [ObjectIdentifier: WebSocketSession]()
+     private static let liveLock = NSLock()
++    private static func publishConnection(_ ip: String) {
++        guard embeddedInRemoteMouse else { return }
++        liveLock.lock(); let connected = !live.isEmpty; liveLock.unlock()
++        DistributedNotificationCenter.default().postNotificationName(
++            NSNotification.Name("com.corvofeng.RemoteMouse.webState"), object: nil,
++            userInfo: ["connected": connected, "ip": ip], deliverImmediately: true
++        )
++    }
+     private static let watchdog: DispatchSourceTimer = {
+         let t = DispatchSource.makeTimerSource(queue: .global())
+         t.schedule(deadline: .now() + 10, repeating: 10)
+@@ -648,6 +657,7 @@
+         log("遥控已连接：\(ip)")
+         _ = Self.watchdog
+         Self.liveLock.lock(); Self.live[ObjectIdentifier(self)] = self; Self.liveLock.unlock()
++        Self.publishConnection(ip)
+         // page = 网页文件的指纹：Mac 更新了网页，已经打开的手机网页重连时会自动刷新
+         let page = webFile("remote.html").map { SHA256.hash(data: $0).prefix(6).map { String(format: "%02x", $0) }.joined() } ?? ""
+         send(["t": "hello", "https": httpsReady ? Int(httpsPort) : 0, "page": page,
+@@ -751,6 +761,7 @@
+         guard !finished else { return }
+         finished = true
+         Self.liveLock.lock(); Self.live.removeValue(forKey: ObjectIdentifier(self)); Self.liveLock.unlock()
++        Self.publishConnection(ip)
+         conn.cancel()
+         log("遥控已断开：\(ip)")
+         ScreenStreamer.shared.unsubscribe(self)
+@@ -2467,26 +2478,36 @@
  // MARK: 菜单栏
  
  final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
@@ -22,10 +53,10 @@
 -        menu.delegate = self
 -        statusItem.menu = menu
 -        updateIcon()
-+        if embeddedInTVRemoteMouse {
++        if embeddedInRemoteMouse {
 +            DistributedNotificationCenter.default().addObserver(
 +                self, selector: #selector(handleEmbeddedAction(_:)),
-+                name: NSNotification.Name("com.corvofeng.TVRemoteMouse.webAction"), object: nil
++                name: NSNotification.Name("com.corvofeng.RemoteMouse.webAction"), object: nil
 +            )
 +        } else {
 +            statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -41,23 +72,23 @@
          DispatchQueue.global().async { startTLSListener() }  // 第一次要生成证书，放后台
 -        AtvRunner.shared.killOrphans()
 -        if trusted { AtvRunner.shared.start() }
-+        if !embeddedInTVRemoteMouse {
++        if !embeddedInRemoteMouse {
 +            AtvRunner.shared.killOrphans()
 +            if trusted { AtvRunner.shared.start() }
 +        }
  
          // 第一次运行：默认开机自启（菜单里可以关）
 -        if #available(macOS 13.0, *), isAppBundle, UserDefaults.standard.object(forKey: "didSetupLogin") == nil {
-+        if #available(macOS 13.0, *), isAppBundle, !embeddedInTVRemoteMouse, UserDefaults.standard.object(forKey: "didSetupLogin") == nil {
++        if #available(macOS 13.0, *), isAppBundle, !embeddedInRemoteMouse, UserDefaults.standard.object(forKey: "didSetupLogin") == nil {
              UserDefaults.standard.set(true, forKey: "didSetupLogin")
              try? SMAppService.mainApp.register()
          }
-@@ -2502,18 +2513,19 @@
+@@ -2502,23 +2523,42 @@
              if now != self.trusted {
                  self.trusted = now
                  self.updateIcon()
 -                if now { log("已获得辅助功能权限，重启 App"); self.relaunch() }
-+                if now && !embeddedInTVRemoteMouse { log("已获得辅助功能权限，重启 App"); self.relaunch() }
++                if now && !embeddedInRemoteMouse { log("已获得辅助功能权限，重启 App"); self.relaunch() }
              }
          }
      }
@@ -65,7 +96,7 @@
      func applicationWillTerminate(_ n: Notification) {
          LidAwake.apply(quitting: true)
 -        AtvRunner.shared.shutdown()
-+        if !embeddedInTVRemoteMouse { AtvRunner.shared.shutdown() }
++        if !embeddedInRemoteMouse { AtvRunner.shared.shutdown() }
          FitDisplay.shared.revert()
      }
  
@@ -74,10 +105,10 @@
          let name = trusted ? "appletvremote.gen4" : "exclamationmark.triangle"
          let img = NSImage(systemSymbolName: name, accessibilityDescription: "Mac 遥控")
              ?? NSImage(systemSymbolName: "iphone", accessibilityDescription: "Mac 遥控")
-@@ -2521,6 +2533,24 @@
+         img?.isTemplate = true
          statusItem.button?.image = img
-     }
- 
++    }
++
 +    @objc func handleEmbeddedAction(_ notification: Notification) {
 +        guard let action = notification.userInfo?["action"] as? String else { return }
 +        switch action {
@@ -94,32 +125,30 @@
 +        case "quit": quit()
 +        default: break
 +        }
-+    }
-+
+     }
+ 
      func requestPermission() {
-         // 带 prompt 调用会把本 App 自动加进「辅助功能」列表，用户只需要打开开关
-         _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary)
-@@ -2552,8 +2582,9 @@
+@@ -2552,8 +2592,9 @@
              menu.addItem(it)
          }
  
 -        let header = NSMenuItem(title: "Mac 遥控", action: nil, keyEquivalent: "")
 -        header.attributedTitle = NSAttributedString(string: "Mac 遥控", attributes: [.font: NSFont.boldSystemFont(ofSize: 13)])
-+        let title = embeddedInTVRemoteMouse ? "TVRemoteMouse · 网页遥控" : "Mac 遥控"
++        let title = embeddedInRemoteMouse ? "RemoteMouse · 网页遥控" : "Mac 遥控"
 +        let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
 +        header.attributedTitle = NSAttributedString(string: title, attributes: [.font: NSFont.boldSystemFont(ofSize: 13)])
          menu.addItem(header)
  
          if trusted {
-@@ -2577,6 +2608,7 @@
+@@ -2577,6 +2618,7 @@
              item("立即恢复 Mac 屏幕", #selector(restoreScreen))
          }
  
-+        if !embeddedInTVRemoteMouse {
++        if !embeddedInRemoteMouse {
          let atv = AtvRunner.shared
          if atv.executable == nil {
              info("❌ Apple TV 遥控器：组件缺失")
-@@ -2590,12 +2622,13 @@
+@@ -2590,12 +2632,13 @@
              info("❌ Apple TV 遥控器：\(atv.lastError ?? "未运行")")
          }
  
@@ -130,17 +159,17 @@
          menu.addItem(.separator())
 -        if atv.executable != nil {
 -            item("启用 Apple TV 遥控器", #selector(toggleAtv), on: atv.enabled)
-+        if !embeddedInTVRemoteMouse && AtvRunner.shared.executable != nil {
++        if !embeddedInRemoteMouse && AtvRunner.shared.executable != nil {
 +            item("启用 Apple TV 遥控器", #selector(toggleAtv), on: AtvRunner.shared.enabled)
              item("Apple TV 遥控器设置（触控板模式、速度）…", #selector(openAtvSettings))
          }
          item(AutoUnlock.available ? "自动解锁：已设置密码（点这里修改或清除）…" : "设置自动解锁密码…", #selector(setUnlockPassword),
-@@ -2604,7 +2637,7 @@
+@@ -2604,7 +2647,7 @@
               #selector(toggleLidAwake), on: LidAwake.enabled && LidAwake.ruleInstalled)
          item("使用说明…", #selector(showHelp))
          menu.addItem(.separator())
 -        if #available(macOS 13.0, *) {
-+        if #available(macOS 13.0, *), !embeddedInTVRemoteMouse {
++        if #available(macOS 13.0, *), !embeddedInRemoteMouse {
              item("开机自动启动", #selector(toggleLogin), on: SMAppService.mainApp.status == .enabled)
          }
          item("打开日志", #selector(openLog))

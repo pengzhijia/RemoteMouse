@@ -17,7 +17,7 @@ using System.Windows.Threading;
 using Forms = System.Windows.Forms;
 using Drawing = System.Drawing;
 
-namespace TVRemoteMouse;
+namespace RemoteMouse;
 
 public sealed class App : System.Windows.Application
 {
@@ -29,7 +29,7 @@ public sealed class App : System.Windows.Application
         bool created = false;
         for (int i = 0; i < (restarting ? 50 : 1); i++)
         {
-            singleton = new Mutex(true, "Local\\TVRemoteMouse.Desktop", out created);
+            singleton = new Mutex(true, "Local\\RemoteMouse.Desktop", out created);
             if (created) break;
             singleton.Dispose();
             if (restarting) Thread.Sleep(200);
@@ -38,7 +38,7 @@ public sealed class App : System.Windows.Application
         var app = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Run();
     }
-    readonly string support = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TVRemoteMouse");
+    readonly string support = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RemoteMouse");
     readonly HttpClient http = new() { BaseAddress = new Uri("http://127.0.0.1:18765"), Timeout = TimeSpan.FromSeconds(3) };
     Forms.NotifyIcon tray = new();
     Process? core;
@@ -107,7 +107,7 @@ public sealed class App : System.Windows.Application
     }
     void StartWebRemote()
     {
-        var executable = System.IO.Path.Combine(AppContext.BaseDirectory, "TVRemoteMouse.WebRemote.exe");
+        var executable = System.IO.Path.Combine(AppContext.BaseDirectory, "RemoteMouse.WebRemote.exe");
         if (!File.Exists(executable)) return;
         try
         {
@@ -120,7 +120,7 @@ public sealed class App : System.Windows.Application
     void ShowWebRemoteQR()
     {
         if (webRemote == null || webRemote.HasExited) StartWebRemote();
-        var executable = System.IO.Path.Combine(AppContext.BaseDirectory, "TVRemoteMouse.WebRemote.exe");
+        var executable = System.IO.Path.Combine(AppContext.BaseDirectory, "RemoteMouse.WebRemote.exe");
         if (!File.Exists(executable)) { MessageBox.Show("网页遥控组件未包含在当前安装包中。"); return; }
         try
         {
@@ -134,7 +134,7 @@ public sealed class App : System.Windows.Application
     {
         try
         {
-            var info = new ProcessStartInfo(System.IO.Path.Combine(AppContext.BaseDirectory, "TVRemoteMouse.WebRemote.exe")) { UseShellExecute = false, CreateNoWindow = true };
+            var info = new ProcessStartInfo(System.IO.Path.Combine(AppContext.BaseDirectory, "RemoteMouse.WebRemote.exe")) { UseShellExecute = false, CreateNoWindow = true };
             info.ArgumentList.Add("--copy-link");
             using var process = Process.Start(info) ?? throw new IOException("无法启动网页遥控组件。");
             process.WaitForExit();
@@ -158,7 +158,7 @@ public sealed class App : System.Windows.Application
         try
         {
             if (core != null && !core.HasExited) return;
-            var info = new ProcessStartInfo(System.IO.Path.Combine(AppContext.BaseDirectory, "TVRemoteMouse.Core.exe")) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = support };
+            var info = new ProcessStartInfo(System.IO.Path.Combine(AppContext.BaseDirectory, "RemoteMouse.Core.exe")) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = support };
             foreach (var arg in new[] { "--target", "windows", "--name", Environment.MachineName, "--pin", pin, "--ui-port", "18765", "--no-open" }) info.ArgumentList.Add(arg);
             info.Environment["TVREMOTE_NATIVE_HOST"] = "1"; info.Environment["TVREMOTE_APP_SUPPORT_DIR"] = support; info.Environment["XDG_CONFIG_HOME"] = System.IO.Path.Combine(support, "config");
             core = Process.Start(info) ?? throw new IOException("无法启动服务");

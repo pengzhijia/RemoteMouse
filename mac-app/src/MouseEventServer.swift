@@ -7,12 +7,13 @@ import Darwin
 final class MouseEventServer {
     static let shared = MouseEventServer()
 
-    private let queue = DispatchQueue(label: "com.corvofeng.TVRemoteMouse.MouseEventServer", qos: .userInteractive)
+    private let queue = DispatchQueue(label: "com.corvofeng.RemoteMouse.MouseEventServer", qos: .userInteractive)
     private let socketURL: URL
     private var source: DispatchSourceRead?
     private let aimEngine = AimInputEngine()
     private var aimSpeed = -1.0
     private var hardwareMonitor: Any?
+    private var displayObserver: NSObjectProtocol?
     private var dragging = false
     private var dragGeneration: UInt64 = 0
     private var didWarnUntrusted = false
@@ -20,7 +21,7 @@ final class MouseEventServer {
 
     private init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let directory = support.appendingPathComponent("TVRemoteMouse", isDirectory: true)
+        let directory = support.appendingPathComponent("RemoteMouse", isDirectory: true)
         socketURL = directory.appendingPathComponent("mouse-\(ProcessInfo.processInfo.processIdentifier).sock")
     }
 
@@ -81,6 +82,9 @@ final class MouseEventServer {
             _ = path.withCString { Darwin.unlink($0) }
         }
         aimEngine.configure(displays: .current(), settings: .init())
+        displayObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: nil
+        ) { [weak self] _ in self?.aimEngine.updateDisplays(.current()) }
         hardwareMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved,.leftMouseDragged,.rightMouseDragged]) { [weak self] event in
             guard event.cgEvent?.getIntegerValueField(.eventSourceUserData) != AimInputEngine.syntheticTag else { return }
             self?.aimEngine.noteHardwareMotion(dx:event.deltaX,dy:event.deltaY)
@@ -95,6 +99,7 @@ final class MouseEventServer {
         queue.sync { setFnHeld(false) }
         aimEngine.releaseEverythingNow()
         if let hardwareMonitor { NSEvent.removeMonitor(hardwareMonitor); self.hardwareMonitor=nil }
+        if let displayObserver { NotificationCenter.default.removeObserver(displayObserver); self.displayObserver=nil }
         source?.cancel()
         source = nil
     }

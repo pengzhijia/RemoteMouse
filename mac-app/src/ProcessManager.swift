@@ -10,8 +10,8 @@ final class ProcessManager {
 
     private init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        self.logDir = home.appendingPathComponent("Library/Logs/TVRemoteMouse")
-        self.logFile = logDir.appendingPathComponent("TVRemoteMouse.log")
+        self.logDir = home.appendingPathComponent("Library/Logs/RemoteMouse")
+        self.logFile = logDir.appendingPathComponent("RemoteMouse.log")
         try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true, attributes: nil)
     }
 

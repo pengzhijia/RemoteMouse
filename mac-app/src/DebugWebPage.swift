@@ -7,7 +7,7 @@ enum DebugWebPage {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>TVRemoteMouse - 运行日志与系统诊断 (Swift Host)</title>
+  <title>RemoteMouse - 运行日志与系统诊断 (Swift Host)</title>
   <style>
     :root {
       color-scheme: dark;
@@ -562,7 +562,7 @@ enum DebugWebPage {
       <div class="header-left">
         <a href="http://127.0.0.1:18765/" class="back-btn" title="返回遥控控制台 (Port 18765)">← 返回遥控面板 (18765)</a>
         <div>
-          <h1>🛠️ TVRemoteMouse 系统运行日志</h1>
+          <h1>🛠️ RemoteMouse 系统运行日志</h1>
           <div class="subtitle">macOS Swift Host Web Service (Port 18766) · Runtime Logs & Process Diagnostics</div>
         </div>
       </div>
@@ -582,8 +582,8 @@ enum DebugWebPage {
             <span id="fileSizeBadge" style="color: var(--blue);">0 KB</span>
           </div>
           <div class="diag-val">
-            <span id="logPathText" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">~/Library/Logs/TVRemoteMouse/TVRemoteMouse.log</span>
-            <button class="copy-chip" onclick="copyText(state.logPath || '~/Library/Logs/TVRemoteMouse/TVRemoteMouse.log')">复制路径</button>
+            <span id="logPathText" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">~/Library/Logs/RemoteMouse/RemoteMouse.log</span>
+            <button class="copy-chip" onclick="copyText(state.logPath || '~/Library/Logs/RemoteMouse/RemoteMouse.log')">复制路径</button>
           </div>
         </div>
         <div class="diag-item">
@@ -592,8 +592,8 @@ enum DebugWebPage {
             <span>CLI</span>
           </div>
           <div class="diag-val">
-            <span>tail -f ~/Library/Logs/TVRemoteMouse/TVRemoteMouse.log</span>
-            <button class="copy-chip" onclick="copyText('tail -f ~/Library/Logs/TVRemoteMouse/TVRemoteMouse.log')">复制命令</button>
+            <span>tail -f ~/Library/Logs/RemoteMouse/RemoteMouse.log</span>
+            <button class="copy-chip" onclick="copyText('tail -f ~/Library/Logs/RemoteMouse/RemoteMouse.log')">复制命令</button>
           </div>
         </div>
         <div class="diag-item">
@@ -615,7 +615,7 @@ enum DebugWebPage {
         <button id="refreshBtn" class="btn primary" onclick="fetchLogs(true)">🔄 刷新日志</button>
         <button id="autoRefreshBtn" class="btn active" onclick="toggleAutoRefresh()">⏱️ 自动刷新 (2s)</button>
         <button class="btn" onclick="restartCoreProcess()" title="向 Swift 发起重启后台 atv-cli 进程请求">🔄 重启进程</button>
-        <button class="btn danger" onclick="clearLogFile()" title="清空本地 TVRemoteMouse.log 文件内容">🧹 清空文件</button>
+        <button class="btn danger" onclick="clearLogFile()" title="清空本地 RemoteMouse.log 文件内容">🧹 清空文件</button>
         <div class="level-pills">
           <button class="level-pill active" data-level="ALL" onclick="setLevelFilter('ALL')">全部</button>
           <button class="level-pill" data-level="INFO" onclick="setLevelFilter('INFO')">INFO</button>
@@ -651,7 +651,7 @@ enum DebugWebPage {
     <div class="terminal-card">
       <div class="terminal-header">
         <div class="terminal-stats">
-          <span>📄 <strong id="logFileName">TVRemoteMouse.log</strong></span>
+          <span>📄 <strong id="logFileName">RemoteMouse.log</strong></span>
           <span id="renderedCount">正在加载...</span>
           <span id="lastUpdated">更新时间: --:--:--</span>
         </div>
@@ -800,7 +800,7 @@ enum DebugWebPage {
     }
 
     async function clearLogFile() {
-      if (!confirm('确定要清空磁盘上的 TVRemoteMouse.log 日志文件吗？此操作无法撤销。')) return;
+      if (!confirm('确定要清空磁盘上的 RemoteMouse.log 日志文件吗？此操作无法撤销。')) return;
       try {
         const res = await fetch('/api/clear_log', { method: 'POST' });
         const data = await res.json();
@@ -861,7 +861,7 @@ enum DebugWebPage {
         const data = await res.json();
 
         state.logPath = data.log_path || '';
-        $('logPathText').textContent = state.logPath || '~/Library/Logs/TVRemoteMouse/TVRemoteMouse.log';
+        $('logPathText').textContent = state.logPath || '~/Library/Logs/RemoteMouse/RemoteMouse.log';
 
         state.fileSize = data.size_bytes || 0;
         const sizeKb = (state.fileSize / 1024).toFixed(1);
@@ -1039,7 +1039,7 @@ enum DebugWebPage {
         container.innerHTML = `
           <div class="empty-state">
             <h3>暂无符合条件的日志</h3>
-            <p>${state.rawLines.length === 0 ? '日志文件当前为空。通过 TVRemoteMouse 触发操作后将显示实时日志。' : '未找到匹配当前筛选级别的日志内容。'}</p>
+            <p>${state.rawLines.length === 0 ? '日志文件当前为空。通过 RemoteMouse 触发操作后将显示实时日志。' : '未找到匹配当前筛选级别的日志内容。'}</p>
           </div>
         `;
         return;

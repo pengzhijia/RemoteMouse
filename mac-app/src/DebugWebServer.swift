@@ -7,7 +7,7 @@ final class DebugWebServer {
     static let shared = DebugWebServer()
 
     private var listener: NWListener?
-    private let queue = DispatchQueue(label: "com.corvofeng.TVRemoteMouse.DebugWebServer", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.corvofeng.RemoteMouse.DebugWebServer", qos: .userInitiated)
     private(set) var port: UInt16 = 18766
     private(set) var isRunning: Bool = false
 
@@ -143,7 +143,7 @@ final class DebugWebServer {
                 statusCode: 200,
                 statusText: "OK",
                 contentType: "text/plain; charset=utf-8",
-                extraHeaders: ["Content-Disposition": "attachment; filename=\"TVRemoteMouse.log\""],
+                extraHeaders: ["Content-Disposition": "attachment; filename=\"RemoteMouse.log\""],
                 body: joined
             )
             return

@@ -5,8 +5,23 @@ import ServiceManagement
 final class WebRemoteManager {
     static let shared = WebRemoteManager()
     private var process: Process?
+    private var stateObserver: NSObjectProtocol?
+    private(set) var connected = false
+    private(set) var clientIP: String?
 
-    private init() {}
+    private init() {
+        stateObserver = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.corvofeng.RemoteMouse.webState"), object: nil, queue: .main
+        ) { [weak self] note in
+            guard let self, self.isRunning, let value = note.userInfo?["connected"] as? Bool else { return }
+            let changed = self.connected != value
+            self.connected = value
+            self.clientIP = value ? note.userInfo?["ip"] as? String : nil
+            if changed {
+                NotificationCenter.default.post(name: NSNotification.Name("RemoteMouseWebStateChanged"), object: self)
+            }
+        }
+    }
     var isRunning: Bool { process?.isRunning == true }
 
     func setupLoginIfNeeded() {
@@ -31,7 +46,7 @@ final class WebRemoteManager {
 
     func start() {
         guard process?.isRunning != true else { return }
-        let executable = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/WebRemoteBridge")
+        let executable = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/WebRemoteBridge.app/Contents/MacOS/WebRemoteBridge")
         guard FileManager.default.isExecutableFile(atPath: executable.path) else {
             NSLog("[Web Remote] Missing WebRemoteBridge helper")
             return
@@ -54,7 +69,7 @@ final class WebRemoteManager {
         if needsStart { start() }
         let send = {
             DistributedNotificationCenter.default().postNotificationName(
-                NSNotification.Name("com.corvofeng.TVRemoteMouse.webAction"), object: nil,
+                NSNotification.Name("com.corvofeng.RemoteMouse.webAction"), object: nil,
                 userInfo: ["action": action], deliverImmediately: true
             )
         }
@@ -76,12 +91,17 @@ final class WebRemoteManager {
         guard let process else { return }
         if process.isRunning {
             DistributedNotificationCenter.default().postNotificationName(
-                NSNotification.Name("com.corvofeng.TVRemoteMouse.webAction"), object: nil,
+                NSNotification.Name("com.corvofeng.RemoteMouse.webAction"), object: nil,
                 userInfo: ["action": "quit"], deliverImmediately: true
             )
             for _ in 0..<20 where process.isRunning { Thread.sleep(forTimeInterval: 0.1) }
             if process.isRunning { process.terminate() }
         }
         self.process = nil
+        if connected {
+            connected = false
+            clientIP = nil
+            NotificationCenter.default.post(name: NSNotification.Name("RemoteMouseWebStateChanged"), object: self)
+        }
     }
 }

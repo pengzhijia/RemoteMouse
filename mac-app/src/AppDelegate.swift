@@ -34,9 +34,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Start the atv-core Rust backend process if not already running
         ProcessManager.shared.startCoreIfNeeded { success in
             if success {
-                print("✅ TVRemoteMouse core service is ready.")
+                print("✅ RemoteMouse core service is ready.")
             } else {
-                print("⚠️ TVRemoteMouse core service could not be started.")
+                print("⚠️ RemoteMouse core service could not be started.")
             }
             StatusItemManager.shared.refresh()
         }

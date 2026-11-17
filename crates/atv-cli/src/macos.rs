@@ -342,7 +342,7 @@ impl MacDelegate {
                      \n\
                      👉 Note: In modern macOS, the settings pane is displayed as:\n\
                      \"Device Control and Data Access\" (设备控制与数据访问) > \"Accessibility\" (辅助功能).\n\
-                     👉 Enable the current TVRemoteMouse app in Accessibility.\n\
+                     👉 Enable the current RemoteMouse app in Accessibility.\n\
                      Permission for the separately signed original app does not authorize this build.\n\
                      ================================================================================\n"
                 );
@@ -398,7 +398,7 @@ impl MacDelegate {
     }
 
     pub fn notify_trackpad_mode_changed(&self, mode: TrackpadMode) {
-        let title = "TVRemoteMouse";
+        let title = "RemoteMouse";
         let message = match mode {
             TrackpadMode::Mouse => "已切换为: 🖱️ 鼠标光标模式 (Mouse Mode)",
             TrackpadMode::Direction => "已切换为: ◀▲▼▶ 方向键模式 (Arrow Keys 上下左右)",
@@ -418,7 +418,7 @@ impl MacDelegate {
     }
 
     pub fn notify_media_action(&self, message: &str) {
-        let title = "TVRemoteMouse";
+        let title = "RemoteMouse";
         info!("[macOS] {message}");
         let script = format!("display notification \"{message}\" with title \"{title}\"");
         let _ = Command::new("/usr/bin/osascript").args(["-e", &script]).spawn();
@@ -681,7 +681,7 @@ impl MacDelegate {
                     2 => {
                         info!("[macOS] media next track (double-click)");
                         send_system_media_key(NX_KEYTYPE_NEXT);
-                        let title = "TVRemoteMouse";
+                        let title = "RemoteMouse";
                         let message = "⏭ 下一曲 (Next Track)";
                         info!("[macOS] {message}");
                         let script = format!("display notification \"{message}\" with title \"{title}\"");

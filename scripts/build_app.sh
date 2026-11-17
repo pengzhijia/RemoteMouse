@@ -94,23 +94,41 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 cp "$SWIFT_BIN" "$APP_BUNDLE/Contents/MacOS/RemoteMouse"
 cp "$ATV_CLI_BIN" "$APP_BUNDLE/Contents/MacOS/atv-cli"
 WEB_REMOTE_SRC="$ROOT_DIR/integrations/web-remote"
+WEB_REMOTE_APP="$APP_BUNDLE/Contents/Helpers/WebRemoteBridge.app"
+mkdir -p "$WEB_REMOTE_APP/Contents/MacOS" "$WEB_REMOTE_APP/Contents/Resources/web"
 WEB_REMOTE_BUILD_SOURCE="$BUILD_DIR/WatchBridge.embedded.swift"
 cp "$WEB_REMOTE_SRC/WatchBridge.swift" "$WEB_REMOTE_BUILD_SOURCE"
 patch -s "$WEB_REMOTE_BUILD_SOURCE" < "$WEB_REMOTE_SRC/adapter/mac-embedded.patch"
 if [ "$ARCH" = "universal" ]; then
     swiftc -O -target arm64-apple-macos13.0 -import-objc-header "$WEB_REMOTE_SRC/CGVirtualDisplay.h" "$WEB_REMOTE_BUILD_SOURCE" -o "$BUILD_DIR/WebRemoteBridge_arm64"
     swiftc -O -target x86_64-apple-macos13.0 -import-objc-header "$WEB_REMOTE_SRC/CGVirtualDisplay.h" "$WEB_REMOTE_BUILD_SOURCE" -o "$BUILD_DIR/WebRemoteBridge_x86_64"
-    lipo -create -output "$APP_BUNDLE/Contents/MacOS/WebRemoteBridge" "$BUILD_DIR/WebRemoteBridge_arm64" "$BUILD_DIR/WebRemoteBridge_x86_64"
+    lipo -create -output "$WEB_REMOTE_APP/Contents/MacOS/WebRemoteBridge" "$BUILD_DIR/WebRemoteBridge_arm64" "$BUILD_DIR/WebRemoteBridge_x86_64"
     rm -f "$BUILD_DIR/WebRemoteBridge_arm64" "$BUILD_DIR/WebRemoteBridge_x86_64"
 else
-    swiftc -O -target "${ARCH}-apple-macos13.0" -import-objc-header "$WEB_REMOTE_SRC/CGVirtualDisplay.h" "$WEB_REMOTE_BUILD_SOURCE" -o "$APP_BUNDLE/Contents/MacOS/WebRemoteBridge"
+    swiftc -O -target "${ARCH}-apple-macos13.0" -import-objc-header "$WEB_REMOTE_SRC/CGVirtualDisplay.h" "$WEB_REMOTE_BUILD_SOURCE" -o "$WEB_REMOTE_APP/Contents/MacOS/WebRemoteBridge"
 fi
 rm -f "$WEB_REMOTE_BUILD_SOURCE"
-mkdir -p "$APP_BUNDLE/Contents/Resources/web"
-cp "$WEB_REMOTE_SRC/web/remote.html" "$APP_BUNDLE/Contents/Resources/web/remote.html"
+cp "$WEB_REMOTE_SRC/web/remote.html" "$WEB_REMOTE_APP/Contents/Resources/web/remote.html"
+cat > "$WEB_REMOTE_APP/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>com.corvofeng.RemoteMouse.web-remote</string>
+<key>CFBundleName</key><string>RemoteMouse 网页遥控</string>
+<key>CFBundleDisplayName</key><string>RemoteMouse 网页遥控</string>
+<key>CFBundleExecutable</key><string>WebRemoteBridge</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>1.0.0</string>
+<key>CFBundleVersion</key><string>1</string>
+<key>LSMinimumSystemVersion</key><string>13.0</string>
+<key>LSUIElement</key><true/>
+<key>NSScreenCaptureUsageDescription</key><string>用于把 Mac 屏幕实时显示在网页遥控器上。</string>
+<key>NSAccessibilityUsageDescription</key><string>用于执行网页遥控器的鼠标和键盘操作。</string>
+</dict></plist>
+PLIST
 chmod +x "$APP_BUNDLE/Contents/MacOS/RemoteMouse"
 chmod +x "$APP_BUNDLE/Contents/MacOS/atv-cli"
-chmod +x "$APP_BUNDLE/Contents/MacOS/WebRemoteBridge"
+chmod +x "$WEB_REMOTE_APP/Contents/MacOS/WebRemoteBridge"
 
 # Copy metadata and resources
 cp "$ROOT_DIR/mac-app/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
@@ -184,9 +202,9 @@ if [ -z "$SIGN_IDENTITY" ]; then
 fi
 
 echo "🔏 Signing application with certificate: \"$SIGN_IDENTITY\"..."
-codesign --force --sign "$SIGN_IDENTITY" --identifier "com.corvofeng.TVRemoteMouse.helper" "$APP_BUNDLE/Contents/MacOS/atv-cli"
-codesign --force --sign "$SIGN_IDENTITY" --identifier "com.corvofeng.TVRemoteMouse.web-remote" "$APP_BUNDLE/Contents/MacOS/WebRemoteBridge"
-codesign --force --sign "$SIGN_IDENTITY" --identifier "com.corvofeng.TVRemoteMouse" "$APP_BUNDLE/Contents/MacOS/RemoteMouse"
+codesign --force --sign "$SIGN_IDENTITY" --identifier "com.corvofeng.RemoteMouse.helper" "$APP_BUNDLE/Contents/MacOS/atv-cli"
+codesign --force --sign "$SIGN_IDENTITY" --identifier "com.corvofeng.RemoteMouse.web-remote" "$WEB_REMOTE_APP"
+codesign --force --sign "$SIGN_IDENTITY" --identifier "com.corvofeng.RemoteMouse" "$APP_BUNDLE/Contents/MacOS/RemoteMouse"
 codesign --force --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
 if [ "$ADHOC_SIGNING" = true ]; then
     echo "✨ Ad-hoc signing completed. This local test build requires its own Accessibility consent."

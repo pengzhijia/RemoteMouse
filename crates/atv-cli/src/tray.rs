@@ -34,7 +34,7 @@ static STATE: OnceLock<State> = OnceLock::new();
 
 const WM_TRAY: u32 = WM_APP + 1;
 const RUN_KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
-const RUN_NAME: &str = "TVRemoteMouse";
+const RUN_NAME: &str = "RemoteMouse";
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 fn wide(s: &str) -> Vec<u16> {
@@ -81,7 +81,7 @@ pub fn message_box(text: &str) {
         MessageBoxW(
             std::ptr::null_mut(),
             wide(text).as_ptr(),
-            wide("TVRemoteMouse").as_ptr(),
+            wide("RemoteMouse").as_ptr(),
             MB_ICONINFORMATION,
         );
     }
@@ -92,7 +92,7 @@ pub fn already_running() -> bool {
     use windows_sys::Win32::Foundation::{GetLastError, ERROR_ALREADY_EXISTS};
     use windows_sys::Win32::System::Threading::CreateMutexW;
     unsafe {
-        CreateMutexW(std::ptr::null(), 0, wide("Local\\TVRemoteMouseSingleton").as_ptr());
+        CreateMutexW(std::ptr::null(), 0, wide("Local\\RemoteMouseSingleton").as_ptr());
         GetLastError() == ERROR_ALREADY_EXISTS
     }
 }
@@ -250,7 +250,7 @@ pub fn spawn(
         nid.uCallbackMessage = WM_TRAY;
         nid.hIcon = icon;
         fill(&mut nid.szTip, &s.title);
-        fill(&mut nid.szInfoTitle, "TVRemoteMouse 已在后台运行");
+        fill(&mut nid.szInfoTitle, "RemoteMouse 已在后台运行");
         fill(&mut nid.szInfo, &format!("{}\n右键或点击托盘图标可开启/停止服务或切换模式", s.title));
         Shell_NotifyIconW(NIM_ADD, &nid);
 
@@ -276,13 +276,13 @@ pub fn update_status(running: bool, info: &str) {
             nid.uID = 1;
             nid.uFlags = NIF_TIP | NIF_INFO;
             if running {
-                fill(&mut nid.szTip, &format!("TVRemoteMouse (运行中) · {info}"));
+                fill(&mut nid.szTip, &format!("RemoteMouse (运行中) · {info}"));
                 fill(&mut nid.szInfoTitle, "服务已启动");
-                fill(&mut nid.szInfo, &format!("TVRemoteMouse 服务已恢复运行\n{info}"));
+                fill(&mut nid.szInfo, &format!("RemoteMouse 服务已恢复运行\n{info}"));
             } else {
-                fill(&mut nid.szTip, "TVRemoteMouse (已停止服务)");
+                fill(&mut nid.szTip, "RemoteMouse (已停止服务)");
                 fill(&mut nid.szInfoTitle, "服务已停止");
-                fill(&mut nid.szInfo, "TVRemoteMouse 模拟服务已暂停，右键可重新启动。");
+                fill(&mut nid.szInfo, "RemoteMouse 模拟服务已暂停，右键可重新启动。");
             }
             Shell_NotifyIconW(NIM_MODIFY, &nid);
         }

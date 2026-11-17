@@ -16,9 +16,9 @@ mkdir -p "$OUTPUT"
 swift scripts/generate_windows_icon.swift
 cargo build --release -p atv-cli --target "$TARGET"
 cargo build --release --manifest-path integrations/web-remote/windows/Cargo.toml --target "$TARGET"
-"$DOTNET_BIN" publish windows-app/TVRemoteMouse.csproj -c Release -r win-x64 --self-contained true -o "$OUTPUT"
-cp "target/$TARGET/release/atv-cli.exe" "$OUTPUT/TVRemoteMouse.Core.exe"
-cp "integrations/web-remote/windows/target/$TARGET/release/PCRemote.exe" "$OUTPUT/TVRemoteMouse.WebRemote.exe"
+"$DOTNET_BIN" publish windows-app/RemoteMouse.csproj -c Release -r win-x64 --self-contained true -o "$OUTPUT"
+cp "target/$TARGET/release/atv-cli.exe" "$OUTPUT/RemoteMouse.Core.exe"
+cp "integrations/web-remote/windows/target/$TARGET/release/PCRemote.exe" "$OUTPUT/RemoteMouse.WebRemote.exe"
 cp windows-app/README.md "$OUTPUT/README.md"
 (cd "$(dirname "$OUTPUT")" && zip -q -r -FS "$ROOT_DIR/build/RemoteMouse-windows-x64.zip" "$(basename "$OUTPUT")")
 echo "Package: $ROOT_DIR/build/RemoteMouse-windows-x64.zip"

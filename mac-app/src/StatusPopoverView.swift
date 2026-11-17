@@ -10,12 +10,12 @@ struct StatusPopoverView: View {
     @FocusState private var pinFocused: Bool
 
     private var displayedState: RemoteConnectionState {
-        selectedControl == "web" ? (WebRemoteManager.shared.isRunning ? .waiting : .stopped) : manager.connectionState
+        selectedControl == "web" ? (WebRemoteManager.shared.isRunning ? (WebRemoteManager.shared.connected ? .connected : .waiting) : .stopped) : manager.connectionState
     }
     private var tint: Color { Color(nsColor: displayedState.color) }
     private var mode: String { manager.status?.currentTrackpadMode ?? "mouse" }
     private var badgeTitle: String {
-        if selectedControl == "web" { return WebRemoteManager.shared.isRunning ? "网页遥控运行中" : "网页遥控已停止" }
+        if selectedControl == "web" { return WebRemoteManager.shared.isRunning ? (WebRemoteManager.shared.connected ? "网页已连接" : "等待网页连接") : "网页遥控已停止" }
         switch displayedState {
         case .connected: return "已连接"
         case .waiting: return "等待连接"
@@ -89,7 +89,7 @@ struct StatusPopoverView: View {
 
     private var webControls: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label(WebRemoteManager.shared.isRunning ? "网页遥控运行中" : "网页遥控未运行", systemImage: "globe")
+            Label(WebRemoteManager.shared.isRunning ? (WebRemoteManager.shared.connected ? "网页遥控已连接" : "网页遥控等待连接") : "网页遥控未运行", systemImage: "globe")
                 .font(.system(size: 13, weight: .medium))
             Text("iPhone / iPad 用 Safari 扫码连接，可使用触控、键盘、语音和屏幕查看。")
                 .font(.caption).foregroundColor(.secondary)

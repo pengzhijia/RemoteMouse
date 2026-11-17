@@ -2,7 +2,7 @@
 
 > **English Version** | [中文版本](README_zh.md)
 
-**Control your Mac or Windows PC from an iPhone or iPad over your local network.** RemoteMouse combines the built-in Apple TV Remote in Control Center with a browser-based remote for touchpad, keyboard, voice input, and screen viewing. The Android TV receiver remains available.
+RemoteMouse lets an iPhone or iPad control a Mac or Windows PC on the same local network. Choose the built-in Apple TV Remote in Control Center, or open the browser remote by scanning a QR code. The browser remote provides a touchpad, keyboard, voice input, shortcuts, and screen viewing; on Mac, it also supports iPad touch and Apple Pencil. An Android TV receiver is included in the source tree.
 
 <!-- TODO: replace the image below with a 15–30s screen recording:
      Control Center → Apple TV Remote → select device → navigate the TV / Mac.
@@ -21,9 +21,9 @@ Swipe down from the top-right corner to open Control Center, tap "Apple TV Remot
 
 ---
 
-## Source code
+## Download
 
-[Download the source ZIP](https://github.com/pengzhijia/RemoteMouse/archive/refs/heads/main.zip) or clone this repository. Build instructions are in [Build from source](#build-from-source). This repository does not include prebuilt apps.
+Get the current macOS and Windows builds from [Release v1.0.0](https://github.com/pengzhijia/RemoteMouse/releases/tag/v1.0.0). For source code, [download the ZIP](https://github.com/pengzhijia/RemoteMouse/archive/refs/heads/main.zip) or clone this repository. Android TV can be built from source using the instructions below.
 
 ---
 
@@ -33,6 +33,7 @@ Swipe down from the top-right corner to open Control Center, tap "Apple TV Remot
 | :--- | :--- | :--- |
 | **Controller** | iPhone / iPad with the native **Apple TV Remote** in Control Center | No app install needed on the phone |
 | **macOS targets** | Apple Silicon & Intel Macs (menu bar app + CLI) | Requires Accessibility permission |
+| **Windows targets** | Windows 10/11 x64 (tray app) | Requires private-network access |
 | **Android targets** | Android TV, Google TV, TV boxes, emulators | Requires network ADB; see [limitations](#limitations) |
 | **Network** | Controller and target on the same LAN | AP isolation / guest Wi-Fi must be off |
 
@@ -46,7 +47,7 @@ Swipe down from the top-right corner to open Control Center, tap "Apple TV Remot
 
 - **Android TV needs network ADB.** Android blocks ordinary apps from injecting D-pad / Select keys into other apps, so key injection relies on a local ADB channel. The Accessibility Service is only a fallback and handles global actions (Back / Home). Full setup: [Android TV prerequisites](#android-tv).
 - **Pairing uses a fixed PIN.** When the iPhone asks for a pairing code, enter **`1111`**.
-- The macOS app is signed with a self-signed certificate, so Gatekeeper will warn on first launch. See [macOS prerequisites](#macos).
+- The v1.0.0 macOS release uses ad hoc signing, so Gatekeeper may warn on first launch and Accessibility permission must be granted for this build. See [macOS prerequisites](#macos).
 
 ---
 
@@ -158,7 +159,7 @@ The bridge forwards ports `49152/49153/49154` via `adb forward` and proxies the 
 
 ![Emulator bridge workflow](docs/images/en/emulator_operation_flow.svg)
 
-### TVRemoteMouse Web Inspector (port 18765)
+### RemoteMouse Web Inspector (port 18765)
 
 With the menu bar app running, open **`http://127.0.0.1:18765`**:
 
@@ -169,7 +170,7 @@ With the menu bar app running, open **`http://127.0.0.1:18765`**:
 - Ballistics presets: `0.5x Precise`, `1.0x Standard`, `1.5x Fast`, `2.2x Ultra-Wide`.
 - Connected-device metadata and live volume telemetry.
 
-### TVRemoteMouse host diagnostics (port 18766)
+### RemoteMouse host diagnostics (port 18766)
 
 Open **`http://127.0.0.1:18766`** to inspect process health, port bindings, and live protocol handshakes:
 
@@ -236,7 +237,7 @@ adb shell settings put secure accessibility_enabled 1
 
 **macOS says the app is damaged / from an unidentified developer?**
 ```bash
-xattr -dr com.apple.quarantine /Applications/TVRemoteMouse.app
+xattr -dr com.apple.quarantine /Applications/RemoteMouse.app
 # or trust the bundled certificate:
 ./scripts/import_certificate.sh Corvo_Development.p12
 ```

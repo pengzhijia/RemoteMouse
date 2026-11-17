@@ -43,6 +43,7 @@ final class AimInputEngine: @unchecked Sendable {
     private var hardwareX = 0.0
     private var hardwareY = 0.0
     private var lastPosted: CGPoint?
+    private var logicalPosition: CGPoint?
     private var lastPostTime = 0.0
 
     private var held: [MouseButton: String] = [:]
@@ -65,6 +66,16 @@ final class AimInputEngine: @unchecked Sendable {
         queue.async { [self] in
             map = displays
             self.settings = settings
+            logicalPosition = nil
+        }
+    }
+
+    func updateDisplays(_ displays: DisplayMap) {
+        queue.async { [self] in
+            guard map != displays else { return }
+            map = displays
+            logicalPosition = nil
+            lastPosted = nil
         }
     }
 
@@ -122,6 +133,7 @@ final class AimInputEngine: @unchecked Sendable {
     private func discardMotion() {
         pendingX = 0
         pendingY = 0
+        logicalPosition = nil
         stopTimer()
     }
 
@@ -145,8 +157,19 @@ final class AimInputEngine: @unchecked Sendable {
     }
 
     private func step(dx: Double, dy: Double) {
-        let base = position()
-        let p = map.clamp(CGPoint(x: base.x + dx, y: base.y + dy))
+        if let lastPosted {
+            let actual = CGEvent(source: nil)?.location ?? lastPosted
+            if hardwareX != 0 || hardwareY != 0 {
+                logicalPosition = CGPoint(x: lastPosted.x + hardwareX, y: lastPosted.y + hardwareY)
+            } else if CFAbsoluteTimeGetCurrent() - lastPostTime > 0.15,
+                      hypot(actual.x - lastPosted.x, actual.y - lastPosted.y) > 1 {
+                logicalPosition = actual
+            }
+        }
+        let base = logicalPosition ?? position()
+        let desired = map.clampToSpan(CGPoint(x: base.x + dx, y: base.y + dy))
+        logicalPosition = desired
+        let p = map.clamp(desired)
         postMove(to: p, dx: dx, dy: dy)
         lastPosted = p
         lastPostTime = CFAbsoluteTimeGetCurrent()
@@ -158,9 +181,18 @@ final class AimInputEngine: @unchecked Sendable {
     /// trackpad has done since, while we're moving; otherwise the real cursor.
     private func position() -> CGPoint {
         if let lastPosted, CFAbsoluteTimeGetCurrent() - lastPostTime < 0.15 {
-            return CGPoint(x: lastPosted.x + hardwareX, y: lastPosted.y + hardwareY)
+            if hardwareX != 0 || hardwareY != 0 {
+                let moved = CGPoint(x: lastPosted.x + hardwareX, y: lastPosted.y + hardwareY)
+                logicalPosition = moved
+                return moved
+            }
+            return lastPosted
         }
-        return CGEvent(source: nil)?.location ?? lastPosted ?? .zero
+        let actual = CGEvent(source: nil)?.location ?? lastPosted ?? .zero
+        if let lastPosted, hypot(actual.x - lastPosted.x, actual.y - lastPosted.y) > 1 {
+            logicalPosition = actual
+        }
+        return actual
     }
 
     /// Finishes any motion still playing out under the current button state, so

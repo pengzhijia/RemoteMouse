@@ -76,6 +76,7 @@ final class StatusItemManager: NSObject, ObservableObject {
     private var previewWindow: NSWindow?
     private var measuredPanelSize = NSSize(width: 330, height: 300)
     private var resizeObserver: NSObjectProtocol?
+    private var webStateObserver: NSObjectProtocol?
     private var contentHeight: CGFloat = 300
     private var syncTimer: Timer?
     private var previousSessionReady = false
@@ -84,6 +85,7 @@ final class StatusItemManager: NSObject, ObservableObject {
 
     var connectionState: RemoteConnectionState {
         if isBusy { return .busy }
+        if WebRemoteManager.shared.isRunning && WebRemoteManager.shared.connected { return .connected }
         if !isServiceRunning { return WebRemoteManager.shared.isRunning ? .waiting : .stopped }
         if status?.session_ready == true { return .connected }
         if status?.client_connected == true { return .connecting }
@@ -111,6 +113,16 @@ final class StatusItemManager: NSObject, ObservableObject {
             guard let self, let window=notification.object as? NSWindow,
                   window === self.popover.contentViewController?.view.window else { return }
             self.positionPopover()
+        }
+        webStateObserver = NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("RemoteMouseWebStateChanged"), object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.objectWillChange.send()
+            self.updateStatusItemUI()
+            self.postConnectionNotification(connected: WebRemoteManager.shared.connected,
+                                            deviceName: WebRemoteManager.shared.clientIP,
+                                            webRemote: true)
         }
 
         if preview {
@@ -167,10 +179,11 @@ final class StatusItemManager: NSObject, ObservableObject {
         }
     }
 
-    private func postConnectionNotification(connected: Bool, deviceName: String?) {
+    private func postConnectionNotification(connected: Bool, deviceName: String?, webRemote: Bool = false) {
         let content = UNMutableNotificationContent()
-        content.title = connected ? "iPhone 已连接" : "iPhone 已断开"
-        content.body = connected ? "\(deviceName ?? "iPhone") 可以控制这台 Mac。" : "遥控会话已结束。"
+        content.title = webRemote ? (connected ? "网页遥控已连接" : "网页遥控已断开")
+                                  : (connected ? "iPhone 已连接" : "iPhone 已断开")
+        content.body = connected ? "\(deviceName ?? (webRemote ? "网页遥控设备" : "iPhone")) 可以控制这台 Mac。" : "遥控会话已结束。"
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
 

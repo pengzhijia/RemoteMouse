@@ -7,6 +7,15 @@ import CoreGraphics
 struct DisplayMap: Sendable, Equatable {
     var rects: [CGRect]
 
+    var spanningBounds: CGRect { rects.reduce(.null) { $0.union($1) } }
+
+    func clampToSpan(_ p: CGPoint) -> CGPoint {
+        let bounds = spanningBounds
+        guard !bounds.isNull else { return p }
+        return CGPoint(x: min(max(p.x, bounds.minX), bounds.maxX - 1),
+                       y: min(max(p.y, bounds.minY), bounds.maxY - 1))
+    }
+
     static func current() -> DisplayMap {
         var count: UInt32 = 0
         var rects: [CGRect] = []
